@@ -45,6 +45,10 @@ function main() {
   const totalLLMCost = teamMetrics.reduce((s, m) => s + m.cost, 0);
   const totalCloudCost = cloudMetrics.reduce((s, m) => s + m.totalCost, 0);
   const totalSavings = recommendations.reduce((s, r) => s + r.monthlySaving, 0);
+  
+  // Professional Stats
+  const globalAvgTTFT = Math.round(teamMetrics.reduce((s, m) => s + (m.avgTTFT || 0), 0) / teamMetrics.length);
+  const globalCacheRate = (teamMetrics.reduce((s, m) => s + (m.cacheHitRate || 0), 0) / teamMetrics.length) * 100;
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -70,10 +74,12 @@ function main() {
   const cloudSavings = cloudRecs.reduce((s, r) => s + r.monthlySaving, 0);
 
   console.log(`  ${c.cyan}●${c.reset} Analyzed ${c.bold}${llmLogs.length.toLocaleString()}${c.reset} LLM calls and ${c.bold}${cloudLogs.length.toLocaleString()}${c.reset} cloud resource entries`);
-  console.log(`  ${c.cyan}●${c.reset} Total LLM Spend:   ${c.bold}$${totalLLMCost.toFixed(2)}${c.reset}`);
-  console.log(`  ${c.cyan}●${c.reset} Total Cloud Spend:  ${c.bold}$${totalCloudCost.toFixed(2)}${c.reset}`);
+  console.log(`  ${c.cyan}●${c.reset} Total LLM Spend:     ${c.bold}$${totalLLMCost.toFixed(2)}${c.reset}`);
+  console.log(`  ${c.cyan}●${c.reset} Total Cloud Spend:   ${c.bold}$${totalCloudCost.toFixed(2)}${c.reset}`);
+  console.log(`  ${c.cyan}●${c.reset} Global AI Latency:   ${globalAvgTTFT > 500 ? c.yellow : c.green}${globalAvgTTFT}ms (Avg TTFT)${c.reset}`);
+  console.log(`  ${c.cyan}●${c.reset} Caching Efficiency:  ${c.bold}${globalCacheRate.toFixed(1)}%${c.reset} hit rate`);
   console.log(`  ${c.red}●${c.reset} ${c.bold}${insights.length} issues detected${c.reset}`);
-  console.log(`  ${c.green}●${c.reset} Potential savings:  ${c.bold}${c.green}$${totalSavings.toFixed(2)}/month${c.reset} ($${(totalSavings * 12).toFixed(2)}/year)`);
+  console.log(`  ${c.green}●${c.reset} Potential savings:    ${c.bold}${c.green}$${totalSavings.toFixed(2)}/month${c.reset} ($${(totalSavings * 12).toFixed(2)}/year)`);
   console.log('');
 
   // ═══════════════════════════════════════════════════════════════
@@ -83,12 +89,15 @@ function main() {
   console.log(`${c.dim}${'─'.repeat(62)}${c.reset}`);
 
   const sortedMetrics = [...teamMetrics].sort((a, b) => b.cost - a.cost);
-  console.log(`  ${c.dim}${pad('Team', 14)}${pad('Model', 18)}${padRight('Calls', 8)}${padRight('Cost', 12)}${padRight('vs Last Wk', 12)}${c.reset}`);
-  console.log(`  ${c.dim}${'─'.repeat(60)}${c.reset}`);
+  console.log(`  ${c.dim}${pad('Team', 14)}${pad('Model', 15)}${padRight('Cost', 10)}${padRight('TTFT', 10)}${padRight('TPS', 8)}${padRight('Cache%', 10)}${padRight('vs Lwk', 10)}${c.reset}`);
+  console.log(`  ${c.dim}${'─'.repeat(80)}${c.reset}`);
 
   for (const m of sortedMetrics) {
     const topModel = Object.entries(m.modelsUsed).sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))[0];
     const modelName = topModel ? topModel[0] : 'unknown';
+
+    const ttftColor = (m.avgTTFT || 0) > 600 ? c.red : (m.avgTTFT || 0) > 400 ? c.yellow : c.green;
+    const cacheColor = (m.cacheHitRate || 0) > 0.2 ? c.green : c.dim;
 
     const changeStr = m.costVsLastWeek > 0
       ? `${c.red}+${m.costVsLastWeek}%${c.reset}`
@@ -96,9 +105,11 @@ function main() {
         ? `${c.green}${m.costVsLastWeek}%${c.reset}`
         : `${c.dim}0%${c.reset}`;
 
-    const spike = m.costVsLastWeek > 50 ? ` ${c.red}⚠${c.reset}` : '';
+    const ttftStr = m.avgTTFT ? `${m.avgTTFT}ms` : 'N/A';
+    const tpsStr = m.avgTPS ? `${m.avgTPS}` : 'N/A';
+    const cacheStr = m.cacheHitRate !== undefined ? `${(m.cacheHitRate * 100).toFixed(1)}%` : 'N/A';
 
-    console.log(`  ${pad(m.team, 14)}${pad(modelName, 18)}${padRight(m.totalCalls.toLocaleString(), 8)}${padRight('$' + m.cost.toFixed(2), 12)}${padRight('', 4)}${changeStr}${spike}`);
+    console.log(`  ${pad(m.team, 14)}${pad(modelName, 15)}${padRight('$' + m.cost.toFixed(2), 10)}${ttftColor}${padRight(ttftStr, 10)}${c.reset}${padRight(tpsStr, 8)}${cacheColor}${padRight(cacheStr, 10)}${c.reset}${padRight(changeStr, 10)}`);
   }
   console.log('');
 

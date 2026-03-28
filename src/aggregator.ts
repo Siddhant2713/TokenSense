@@ -18,10 +18,25 @@ export const MODEL_DOWNGRADE_MAP: Partial<Record<Model, Model>> = {
   'gemini-1.5-pro': 'gemini-1.5-flash',
 };
 
-export function calculateCost(model: Model, inputTokens: number, outputTokens: number): number {
+export function calculateCost(model: Model, inputTokens: number, outputTokens: number, is_cached = false, is_batch = false): number {
   const rates = PRICING[model];
   if (!rates) return 0;
-  return (inputTokens * rates.input) + (outputTokens * rates.output);
+  
+  let inputRate = rates.input;
+  let outputRate = rates.output;
+
+  // Caching: OpenAI/Anthropic typically give 50% discount on input tokens
+  if (is_cached) {
+    inputRate *= 0.5;
+  }
+
+  // Batch API: OpenAI typically gives 50% discount on total cost
+  if (is_batch) {
+    inputRate *= 0.5;
+    outputRate *= 0.5;
+  }
+
+  return (inputTokens * inputRate) + (outputTokens * outputRate);
 }
 
 // ─── LLM Aggregation ────────────────────────────────────────────
@@ -57,7 +72,13 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
 
     m.modelsUsed[log.model] = (m.modelsUsed[log.model] ?? 0) + 1;
 
-    const c = calculateCost(log.model, log.inputTokens, log.outputTokens);
+    // Summing for averages
+    if (log.ttft_ms) m.avgTTFT = (m.avgTTFT ?? 0) + log.ttft_ms;
+    if (log.tps) m.avgTPS = (m.avgTPS ?? 0) + log.tps;
+    if (log.is_cached) m.cacheHitRate = (m.cacheHitRate ?? 0) + 1;
+    if (log.is_batch) m.batchUtilization = (m.batchUtilization ?? 0) + 1;
+
+    const c = calculateCost(log.model, log.inputTokens, log.outputTokens, log.is_cached, log.is_batch);
     m.cost += c;
 
     const logTime = new Date(log.timestamp).getTime();
@@ -72,6 +93,12 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
     if (m.totalCalls > 0) {
       m.averageInputTokens = m.totalInputTokens / m.totalCalls;
       m.averageOutputTokens = m.totalOutputTokens / m.totalCalls;
+      
+      // Finalizing averages and rates
+      if (m.avgTTFT) m.avgTTFT = Math.round(m.avgTTFT / m.totalCalls);
+      if (m.avgTPS) m.avgTPS = Math.round(m.avgTPS / m.totalCalls);
+      if (m.cacheHitRate) m.cacheHitRate = parseFloat((m.cacheHitRate / m.totalCalls).toFixed(4));
+      if (m.batchUtilization) m.batchUtilization = parseFloat((m.batchUtilization / m.totalCalls).toFixed(4));
     }
     const cw = teamWeeklyCosts.get(team)!;
     if (cw.lastWeek > 0) {

@@ -100,7 +100,35 @@ export function detectCacheWaste(logs: Log[]): Insight[] {
         rule: 'CACHE_WASTE',
         severity: 'High',
         evidence: `Found identical prompt hash sent ${maxRepeats} times.`,
-        suggestedFix: 'Implement a Redis/in-memory cache wrapper for repeated identical prompts.'
+        suggestedFix: 'Enable OpenAI/Anthropic Prompt Caching for 50-90% savings on input tokens.'
+      });
+    }
+  }
+  return insights;
+}
+
+export function detectPerformanceIssues(metrics: TeamMetrics[]): Insight[] {
+  const insights: Insight[] = [];
+  for (const m of metrics) {
+    // High Latency Rule
+    if (m.avgTTFT && m.avgTTFT > 600) {
+      insights.push({
+        team: m.team,
+        rule: 'MODEL_MISUSE',
+        severity: 'Medium',
+        evidence: `Average TTFT is ${m.avgTTFT}ms — extremely slow response for typical users.`,
+        suggestedFix: 'Switch to a faster region or a lighter model (gpt-4o-mini) to improve UX and reduce cost.'
+      });
+    }
+    
+    // Batch Opportunity Rule
+    if (m.batchUtilization !== undefined && m.batchUtilization < 0.1 && m.totalCalls > 100) {
+      insights.push({
+        team: m.team,
+        rule: 'MODEL_DOWNGRADE',
+        severity: 'Medium',
+        evidence: `${m.totalCalls} individual calls detected with <10% batching.`,
+        suggestedFix: 'Use OpenAI Batch API for non-urgent tasks to achieve a 50% flat discount.'
       });
     }
   }
@@ -134,6 +162,7 @@ export function runAllRules(logs: Log[], metrics: TeamMetrics[], cloudMetrics: C
     ...detectLongPrompts(metrics),
     ...detectSpike(logs),
     ...detectCacheWaste(logs),
+    ...detectPerformanceIssues(metrics),
     ...detectRAMOverProvision(cloudMetrics),
   ];
 }

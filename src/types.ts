@@ -16,6 +16,7 @@ export interface CloudResourceLog {
   executionTimeMs: number;
   requests: number;
   cost: number;
+  region?: string;              // e.g., "us-east-1"
 }
 
 // ─── LLM Log ──────────────────────────────────────────────────
@@ -28,7 +29,13 @@ export interface Log {
   outputTokens: number;
   promptHash: string;
   feature?: string;
-  taskComplexity?: 'simple' | 'moderate' | 'complex';  // determines if model is overkill
+  taskComplexity?: 'simple' | 'moderate' | 'complex';
+  ttft_ms?: number;             // Time To First Token
+  tps?: number;                 // Tokens Per Second
+  is_cached?: boolean;          // OpenAI/Anthropic Prompt Caching
+  is_batch?: boolean;           // OpenAI Batch API (50% discount)
+  region?: string;              // Server Region
+  finish_reason?: 'stop' | 'length' | 'content_filter' | 'null';
 }
 
 // ─── Aggregated Metrics ───────────────────────────────────────
@@ -42,6 +49,10 @@ export interface TeamMetrics {
   cost: number;
   costVsLastWeek: number;
   modelsUsed: Partial<Record<Model, number>>;
+  avgTTFT?: number;
+  avgTPS?: number;
+  cacheHitRate?: number;        // 0-1
+  batchUtilization?: number;    // 0-1
 }
 
 export interface CloudResourceMetrics {

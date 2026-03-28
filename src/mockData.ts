@@ -17,6 +17,7 @@ export function generateMockLogs(): Log[] {
 
   for (let day = 29; day >= 0; day--) {
     const timestamp = generateTimestamp(day);
+    const regions = ['us-east-1', 'us-west-2', 'eu-central-1', 'ap-southeast-1'];
 
     // 1. Payments: MODEL_MISUSE — using gpt-4o for simple classification (avg output ~42 tokens)
     const paymentCallsCount = 380 + Math.floor(Math.random() * 100);
@@ -33,7 +34,12 @@ export function generateMockLogs(): Log[] {
         outputTokens: paymentAvgOutput,
         promptHash: generateId(),
         feature: 'invoice-classifier',
-        taskComplexity: 'simple'
+        taskComplexity: 'simple',
+        ttft_ms: 300 + Math.floor(Math.random() * 200),
+        tps: 60 + Math.floor(Math.random() * 20),
+        is_cached: Math.random() < 0.1,
+        is_batch: Math.random() < 0.05,
+        region: regions[Math.floor(Math.random() * regions.length)]
       });
     }
 
@@ -50,7 +56,11 @@ export function generateMockLogs(): Log[] {
         inputTokens: marketingAvgInput + Math.floor(Math.random() * 500),
         outputTokens: 400 + Math.floor(Math.random() * 200),
         promptHash: generateId(),
-        taskComplexity: 'moderate'
+        taskComplexity: 'moderate',
+        ttft_ms: 400 + Math.floor(Math.random() * 300),
+        tps: 50 + Math.floor(Math.random() * 15),
+        is_cached: Math.random() < 0.05,
+        region: regions[Math.floor(Math.random() * regions.length)]
       });
     }
 
@@ -69,7 +79,11 @@ export function generateMockLogs(): Log[] {
         outputTokens: 100 + Math.floor(Math.random() * 100),
         promptHash: i < cacheWasteThreshold ? cacheWasteHash : generateId(),
         feature: 'code-reviewer',
-        taskComplexity: 'complex'
+        taskComplexity: 'complex',
+        ttft_ms: 350 + Math.floor(Math.random() * 200),
+        tps: 55 + Math.floor(Math.random() * 20),
+        is_cached: i < cacheWasteThreshold ? false : Math.random() < 0.1, // Intentionally false for many repeats to trigger CACHE_WASTE
+        region: regions[Math.floor(Math.random() * regions.length)]
       });
     }
 
@@ -87,7 +101,10 @@ export function generateMockLogs(): Log[] {
         outputTokens: 40 + Math.floor(Math.random() * 20),
         promptHash: generateId(),
         feature: 'batch-job',
-        taskComplexity: 'simple'
+        taskComplexity: 'simple',
+        ttft_ms: 500 + Math.floor(Math.random() * 400), // Simulate potentially slow background jobs
+        is_batch: Math.random() < 0.3, // Higher batch usage for data jobs
+        region: regions[Math.floor(Math.random() * regions.length)]
       });
     }
 
@@ -103,7 +120,11 @@ export function generateMockLogs(): Log[] {
         outputTokens: 80 + Math.floor(Math.random() * 40),
         promptHash: generateId(),
         feature: 'support-chatbot',
-        taskComplexity: 'simple'
+        taskComplexity: 'simple',
+        ttft_ms: 250 + Math.floor(Math.random() * 150),
+        tps: 70 + Math.floor(Math.random() * 30),
+        is_cached: Math.random() < 0.4, // High cache hit for support FAQs
+        region: regions[Math.floor(Math.random() * regions.length)]
       });
     }
 
