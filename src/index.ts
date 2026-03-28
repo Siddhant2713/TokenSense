@@ -1,13 +1,15 @@
-import { generateMockLogs } from './mockData';
-import { aggregateLogs } from './aggregator';
+import { generateMockLogs, generateMockCloudLogs } from './mockData';
+import { aggregateLogs, aggregateCloudLogs } from './aggregator';
 import { runAllRules } from './rules';
 import { generateRecommendations, enhanceWithLLM } from './recommendations';
 
 async function main() {
     const logs = generateMockLogs();
+    const cloudLogs = generateMockCloudLogs();
     const metrics = aggregateLogs(logs);
-    const insights = runAllRules(logs, metrics);
-    const recommendations = generateRecommendations(insights, metrics);
+    const cloudMetrics = aggregateCloudLogs(cloudLogs);
+    const insights = runAllRules(logs, metrics, cloudMetrics);
+    const recommendations = generateRecommendations(insights, metrics, cloudMetrics);
 
     const totalMonthlySaving = recommendations.reduce((sum, r) => sum + r.monthlySaving, 0);
 
