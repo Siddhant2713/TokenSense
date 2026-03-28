@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node -O '{\"module\":\"commonjs\",\"verbatimModuleSyntax\":false}' src/index.ts",
+    "start": "ts-node -O '{\"module\":\"commonjs\",\"verbatimModuleSyntax\":false}' src/index.ts"
   },
   "keywords": [],
   "author": "",
