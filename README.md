@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# TokenSense 🔍
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**TokenSense** is a powerful cost-optimization platform that analyzes LLM API usage and Cloud Resource logs to detect waste patterns and generate actionable, high-saving recommendations.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📋 Progress Status
 
-## React Compiler
+- [x] **Log Aggregation System**: Grouping disparate LLM and Cloud logs into actionable metrics.
+- [x] **Deterministic Rules Engine**: High-fidelity detection of model misuse, long prompts, and over-provisioned resources.
+- [x] **Recommendation Engine**: Mapping insights to dollar-saving actions with effort and confidence ratings.
+- [x] **CLI Reporting Tool**: Instant terminal-based reporting for quick audits.
+- [x] **LLM Enrichment**: Adding intelligent summaries and context to cost insights.
+- [x] **React Web Dashboard**: High-fidelity visual analytics for cost and waste trends.
+- [ ] **Real-time API Integration**: (Next Step) Moving from mock data to live production log ingestion.
+- [ ] **Automated Remediation**: (Future) One-click fixes for identified cloud over-provisioning.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🚀 Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
+- Node.js >= 18
+- npm
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Installation
+```bash
+git clone https://github.com/Siddhant2713/TokenSense.git
+cd TokenSense
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Running the Dashboard
+```bash
+npm run dev
 ```
+
+### Running the CLI
+```bash
+npm run cli
+```
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19, Vite, Recharts (for visual analytics)
+- **Backend/Logic**: TypeScript
+- **CLI**: Standard console output + `tsx` runtime
+- **Design**: Premium CSS with a focus on dark-mode aesthetics
+
+---
+
+## 🔍 Detection Rules
+
+| Rule | Description | Saving Potential |
+| :--- | :--- | :--- |
+| **Model Misuse** | Detects expensive models used for low-complexity tasks. | High |
+| **Long Prompts** | Identifies excessive prompt context that could be optimized via RAG. | Medium |
+| **RAM Over-Provision** | Flags cloud resources with significantly higher RAM than required. | High |
+| **Usage Spikes** | Anomalous burst detection to catch looping scripts or bugs. | High |
+
+---
+
+> Built for the Mela VC Cost Optimization Hackathon. TokenSense helps you stop leaving money on the table.
