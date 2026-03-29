@@ -1,17 +1,22 @@
 import { useState, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, BarChart, Bar, Legend
+  ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell
 } from 'recharts';
 import { generateMockLogs, generateMockCloudLogs } from './mockData';
 import { aggregateLogs, aggregateCloudLogs, computeDailyCosts } from './aggregator';
 import { runAllRules } from './rules';
 import { generateRecommendations } from './recommendations';
+import { ModelRegistry } from './router/modelRegistry';
+import { classifyTask } from './router/taskClassifier';
+import { estimateComplexity } from './router/complexityEstimator';
+import { generateRouterMockData, type RouterMockData } from './routerMockData';
 import type { Insight, Recommendation, TeamMetrics, CloudResourceMetrics } from './types';
+import type { ModelConfig, RequestLog, AggregatedMetrics } from './router/types';
 import './App.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'llm' | 'cloud'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'llm' | 'cloud' | 'router'>('overview');
 
   // Generate all data once
   const { dailyCosts, teamMetrics, cloudMetrics, insights, recommendations, totals } = useMemo(() => {
@@ -28,9 +33,12 @@ function App() {
     const totalSavings = recommendations.reduce((s, r) => s + r.monthlySaving, 0);
     const totalInsights = insights.length;
 
+    const routerData = generateRouterMockData();
+
     return {
       dailyCosts, teamMetrics, cloudMetrics, insights, recommendations,
-      totals: { totalLLMCost, totalCloudCost, totalSavings, totalInsights }
+      totals: { totalLLMCost, totalCloudCost, totalSavings, totalInsights },
+      routerData,
     };
   }, []);
 
@@ -83,6 +91,8 @@ function App() {
             onClick={() => setActiveTab('llm')}>LLM Usage</button>
           <button className={`tab-btn ${activeTab === 'cloud' ? 'active' : ''}`}
             onClick={() => setActiveTab('cloud')}>Cloud Resources</button>
+          <button className={`tab-btn ${activeTab === 'router' ? 'active' : ''}`}
+            onClick={() => setActiveTab('router')}>Smart Router</button>
         </div>
 
         {activeTab === 'overview' && (
@@ -107,6 +117,12 @@ function App() {
         {activeTab === 'cloud' && (
           <>
             <CloudMetricsTable metrics={cloudMetrics} />
+          </>
+        )}
+
+        {activeTab === 'router' && (
+          <>
+            <RouterDashboard data={routerData} />
           </>
         )}
       </main>
@@ -301,6 +317,193 @@ function CloudMetricsTable({ metrics }: { metrics: CloudResourceMetrics[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─── Router Dashboard ─────────────────────────────────────────
+const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#3b82f6'];
+
+function RouterDashboard({ data }: { data: RouterMockData }) {
+  const { metrics, logs, models, latencyStats } = data;
+
+  const costByModelData = Object.entries(metrics.costByModel)
+    .map(([name, value]) => ({ name, value: parseFloat(value.toFixed(4)) }))
+    .sort((a, b) => b.value - a.value);
+
+  const taskTypeData = Object.entries(metrics.requestsByTaskType)
+    .map(([name, value]) => ({ name, value }));
+
+  const recentLogs = logs.slice(-20).reverse();
+
+  return (
+    <div className="router-dashboard animate-in">
+      {/* Router KPI Cards */}
+      <div className="metrics-grid" style={{ marginBottom: 24 }}>
+        <div className="metric-card animate-in">
+          <div className="metric-label">Total Routed Requests</div>
+          <div className="metric-value">{metrics.totalRequests.toLocaleString()}</div>
+          <div className="metric-change negative">Smart routing active</div>
+        </div>
+        <div className="metric-card success animate-in">
+          <div className="metric-label">Total Router Cost</div>
+          <div className="metric-value">${metrics.totalCost.toFixed(4)}</div>
+          <div className="metric-change negative">Optimized routing</div>
+        </div>
+        <div className="metric-card animate-in">
+          <div className="metric-label">Avg Latency</div>
+          <div className="metric-value">{metrics.avgLatencyMs}ms</div>
+          <div className="metric-change negative">P95 tracked</div>
+        </div>
+        <div className="metric-card animate-in">
+          <div className="metric-label">Cache Hit Rate</div>
+          <div className="metric-value">{(metrics.cacheHitRate * 100).toFixed(1)}%</div>
+          <div className="metric-change negative">↓ Reduced API calls</div>
+        </div>
+      </div>
+
+      {/* Charts Row */}
+      <div className="two-col-grid">
+        {/* Cost by Model */}
+        <div className="chart-container animate-in">
+          <div className="section-header">
+            <h2 className="section-title"><span className="icon">🎯</span> Cost by Model</h2>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={costByModelData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="name" tick={{ fill: '#5a6480', fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
+              <YAxis tick={{ fill: '#5a6480', fontSize: 11 }} tickFormatter={(v: number) => `$${v}`} />
+              <RechartsTooltip
+                contentStyle={{ background: '#1a1f35', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, fontSize: 12 }}
+                formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']}
+              />
+              <Bar dataKey="value" name="Cost" radius={[4, 4, 0, 0]}>
+                {costByModelData.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Requests by Task Type */}
+        <div className="chart-container animate-in">
+          <div className="section-header">
+            <h2 className="section-title"><span className="icon">📊</span> Requests by Task Type</h2>
+          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={taskTypeData}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={true}
+              >
+                {taskTypeData.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <RechartsTooltip
+                contentStyle={{ background: '#1a1f35', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, fontSize: 12 }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Model Registry */}
+      <div className="table-container animate-in" style={{ marginBottom: 24 }}>
+        <div className="section-header">
+          <h2 className="section-title"><span className="icon">🗂️</span> Model Registry</h2>
+        </div>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Provider</th>
+              <th>Tier</th>
+              <th>Input $/1K tok</th>
+              <th>Output $/1K tok</th>
+              <th>Avg Latency</th>
+              <th>Strengths</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map(m => (
+              <tr key={m.id}>
+                <td style={{ fontWeight: 600 }}>{m.displayName}</td>
+                <td><span className={`provider-badge ${m.provider}`}>{m.provider}</span></td>
+                <td>
+                  <span className={`tier-badge ${m.tier}`}>{m.tier}</span>
+                </td>
+                <td className="cost-cell">${(m.costPerInputToken * 1000).toFixed(4)}</td>
+                <td className="cost-cell">${(m.costPerOutputToken * 1000).toFixed(4)}</td>
+                <td>{latencyStats[m.id]
+                  ? `${latencyStats[m.id].avg}ms (p95: ${latencyStats[m.id].p95}ms)`
+                  : `${m.avgLatencyMs}ms`
+                }</td>
+                <td>
+                  <div className="model-badges">
+                    {m.strengths.map(s => (
+                      <span key={s} className="model-badge">{s}</span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Recent Routing Logs */}
+      <div className="table-container animate-in">
+        <div className="section-header">
+          <h2 className="section-title"><span className="icon">📋</span> Recent Routing Decisions</h2>
+        </div>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Task</th>
+              <th>Complexity</th>
+              <th>Model</th>
+              <th>Tokens</th>
+              <th>Cost</th>
+              <th>Latency</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentLogs.map(log => (
+              <tr key={log.requestId}>
+                <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {new Date(log.timestamp).toLocaleTimeString()}
+                </td>
+                <td>
+                  <span className={`task-badge ${log.taskType}`}>{log.taskType}</span>
+                </td>
+                <td>
+                  <span className={`complexity-badge ${log.complexity}`}>{log.complexity}</span>
+                </td>
+                <td style={{ fontWeight: 600 }}>{log.model}</td>
+                <td>{log.inputTokens + log.outputTokens}</td>
+                <td className="cost-cell">${log.cost.toFixed(6)}</td>
+                <td>{log.latencyMs}ms</td>
+                <td>
+                  {log.cached && <span className="status-badge cached">cached</span>}
+                  {log.fallback && <span className="status-badge fallback">fallback</span>}
+                  {!log.cached && !log.fallback && log.success && <span className="status-badge success">ok</span>}
+                  {!log.success && <span className="status-badge error">error</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -18,7 +18,8 @@
     "src/aggregator.ts",
     "src/rules.ts",
     "src/recommendations.ts",
-    "src/types.ts"
+    "src/types.ts",
+    "src/router/**/*.ts"
   ],
   "exclude": [
     "src/App.tsx",
