@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell
@@ -6,41 +6,66 @@ import {
 import { generateMockLogs, generateMockCloudLogs } from './mockData';
 import { aggregateLogs, aggregateCloudLogs, computeDailyCosts } from './aggregator';
 import { runAllRules } from './rules';
-import { generateRecommendations } from './recommendations';
-import { ModelRegistry } from './router/modelRegistry';
-import { classifyTask } from './router/taskClassifier';
-import { estimateComplexity } from './router/complexityEstimator';
+import { generateAIRecommendations } from './recommendations';
+import type { Insight, TeamMetrics, CloudResourceMetrics, EnhancedOutput } from './types';
+
 import { generateRouterMockData, type RouterMockData } from './routerMockData';
-import type { Insight, Recommendation, TeamMetrics, CloudResourceMetrics } from './types';
-import type { ModelConfig, RequestLog, AggregatedMetrics } from './router/types';
+
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'llm' | 'cloud' | 'router'>('overview');
+  const [enhancedData, setEnhancedData] = useState<EnhancedOutput | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Generate all data once
-  const { dailyCosts, teamMetrics, cloudMetrics, insights, recommendations, totals } = useMemo(() => {
+  const { dailyCosts, teamMetrics, cloudMetrics, insights, totals, routerData } = useMemo(() => {
     const llmLogs = generateMockLogs();
     const cloudLogs = generateMockCloudLogs();
     const dailyCosts = computeDailyCosts(llmLogs, cloudLogs);
     const teamMetrics = aggregateLogs(llmLogs);
     const cloudMetrics = aggregateCloudLogs(cloudLogs);
     const insights = runAllRules(llmLogs, teamMetrics, cloudMetrics);
-    const recommendations = generateRecommendations(insights, teamMetrics, cloudMetrics);
 
     const totalLLMCost = teamMetrics.reduce((s, m) => s + m.cost, 0);
     const totalCloudCost = cloudMetrics.reduce((s, m) => s + m.totalCost, 0);
-    const totalSavings = recommendations.reduce((s, r) => s + r.monthlySaving, 0);
     const totalInsights = insights.length;
 
     const routerData = generateRouterMockData();
 
     return {
-      dailyCosts, teamMetrics, cloudMetrics, insights, recommendations,
-      totals: { totalLLMCost, totalCloudCost, totalSavings, totalInsights },
+      dailyCosts, teamMetrics, cloudMetrics, insights,
+      totals: { totalLLMCost, totalCloudCost, totalInsights },
       routerData,
     };
   }, []);
+
+  const totalSavings = enhancedData 
+    ? enhancedData.recommendations.reduce((acc, curr) => acc + (curr.recommendation.monthlySaving || 0), 0)
+    : 0;
+
+  useEffect(() => {
+    async function getAiInsights() {
+      setIsAiLoading(true);
+      setAiError(null);
+      try {
+        const data = await generateAIRecommendations({
+          insights,
+          metrics: teamMetrics,
+          cloudMetrics
+        });
+        setEnhancedData(data);
+      } catch (error: any) {
+        console.error('Failed to fetch AI insights:', error);
+        setAiError(error.message || 'TokenSense AI Analyst is currently unavailable.');
+      } finally {
+        setIsAiLoading(false);
+      }
+    }
+    getAiInsights();
+  }, [insights, teamMetrics, cloudMetrics]);
 
   return (
     <div className="app-layout">
@@ -78,7 +103,9 @@ function App() {
           </div>
           <div className="metric-card success animate-in">
             <div className="metric-label">Potential Savings</div>
-            <div className="metric-value" style={{ color: 'var(--accent-green)' }}>${totals.totalSavings.toFixed(2)}</div>
+            <div className="metric-value" style={{ color: 'var(--accent-green)' }}>
+              {isAiLoading ? <span className="loading-spinner-inline" /> : `$${totalSavings.toFixed(2)}`}
+            </div>
             <div className="metric-change negative">↓ Per month</div>
           </div>
         </section>
@@ -97,13 +124,31 @@ function App() {
 
         {activeTab === 'overview' && (
           <>
+            {/* AI Executive Summary */}
+            <section className="ai-summary-card animate-in">
+              <div className="section-header">
+                <h2 className="section-title">
+                  <span className="icon">✨</span> AI Executive Summary
+                  {isAiLoading && <span className="loading-spinner-inline"></span>}
+                </h2>
+              </div>
+              <div className="ai-summary-text">
+                {isAiLoading ? 'TokenSense AI is analyzing your infrastructure spend...' : 
+                 enhancedData ? enhancedData.executiveSummary : 'Run AI analyst to get deeper insights.'}
+              </div>
+            </section>
+
             {/* Cost Chart */}
             <CostChart dailyCosts={dailyCosts} />
 
             {/* Insights + Recommendations */}
             <div className="two-col-grid">
               <InsightsPanel insights={insights} />
-              <RecommendationsPanel recommendations={recommendations} />
+              <RecommendationsPanel 
+                enhancedRecommendations={enhancedData?.recommendations}
+                isLoading={isAiLoading}
+                error={aiError}
+              />
             </div>
           </>
         )}
@@ -193,25 +238,72 @@ function InsightsPanel({ insights }: { insights: Insight[] }) {
 }
 
 // ─── Recommendations Panel ─────────────────────────────────────
-function RecommendationsPanel({ recommendations }: { recommendations: Recommendation[] }) {
-  const sorted = [...recommendations].sort((a, b) => b.monthlySaving - a.monthlySaving);
+function RecommendationsPanel({ 
+  enhancedRecommendations,
+  isLoading,
+  error
+}: { 
+  enhancedRecommendations?: any[],
+  isLoading: boolean,
+  error?: string | null
+}) {
+  if (isLoading) {
+    return (
+      <div className="insights-panel animate-in" id="recommendations-panel">
+        <div className="section-header">
+          <h2 className="section-title"><span className="icon">⏳</span> TokenSense AI is analyzing...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="insights-panel animate-in" id="recommendations-panel">
+        <div className="section-header">
+          <h2 className="section-title"><span className="icon">⚠️</span> AI Analyst Unavailable</h2>
+        </div>
+        <div className="insight-card">
+          <p style={{ color: 'var(--text-muted)' }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const sorted = [...(enhancedRecommendations || [])].sort(
+    (a, b) => b.recommendation.monthlySaving - a.recommendation.monthlySaving
+  );
+
   return (
     <div className="insights-panel animate-in" id="recommendations-panel">
       <div className="section-header">
-        <h2 className="section-title"><span className="icon">💰</span> Top Savings</h2>
+        <h2 className="section-title"><span className="icon">💡</span> AI Recommendations</h2>
       </div>
-      {sorted.slice(0, 6).map((rec, i) => (
+      {sorted.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No recommendations available.</p>}
+      {sorted.map((rec, i) => (
         <div className="insight-card" key={i}>
           <div className="insight-header">
-            <span className={`rec-category ${rec.category}`}>{rec.category.toUpperCase()}</span>
-            <span className="rec-saving">-${rec.monthlySaving.toFixed(2)}/mo</span>
+            <span className={`rec-category ${rec.recommendation.category}`}>{rec.recommendation.category.toUpperCase()}</span>
+            <span className="rec-saving">-${rec.recommendation.monthlySaving?.toFixed(2)}/mo</span>
           </div>
-          <div className="insight-team">{rec.team}</div>
-          <div className="rec-issue">{rec.issue}</div>
-          <div className="insight-evidence">{rec.action}</div>
+          <div className="insight-team">{rec.recommendation.team}</div>
+          <div className="rec-issue">{rec.recommendation.issue}</div>
+          
+          <div className="ai-enhanced-content">
+            <div className="ai-explanation">
+              <strong>Expected Action:</strong> {rec.recommendation.action}
+            </div>
+            <div className="ai-explanation" style={{ marginTop: '0.5rem' }}>
+              <strong>AI Analysis:</strong> {rec.explanation}
+            </div>
+            <div className="ai-why" style={{ marginTop: '0.5rem' }}>
+              <strong>Why it happened:</strong> {rec.whyItHappened}
+            </div>
+          </div>
+
           <div className="rec-meta" style={{ marginTop: 8 }}>
-            <span className="rec-meta-tag">Effort: <span>{rec.effort}</span></span>
-            <span className="rec-meta-tag">Confidence: <span>{rec.confidence}</span></span>
+            <span className="rec-meta-tag">Effort: <span>{rec.recommendation.effort}</span></span>
+            <span className="rec-meta-tag">Confidence: <span>{rec.recommendation.confidence}</span></span>
           </div>
         </div>
       ))}
@@ -234,6 +326,8 @@ function TeamMetricsTable({ metrics }: { metrics: TeamMetrics[] }) {
             <th>Total Calls</th>
             <th>Avg Input Tokens</th>
             <th>Avg Output Tokens</th>
+            <th>Avg Latency</th>
+            <th>Providers</th>
             <th>Models Used</th>
             <th>Total Cost</th>
             <th>vs Last Week</th>
@@ -246,6 +340,14 @@ function TeamMetricsTable({ metrics }: { metrics: TeamMetrics[] }) {
               <td>{m.totalCalls.toLocaleString()}</td>
               <td>{Math.round(m.averageInputTokens).toLocaleString()}</td>
               <td>{Math.round(m.averageOutputTokens).toLocaleString()}</td>
+              <td>{m.averageLatency}ms</td>
+              <td>
+                <div className="model-badges">
+                  {Object.entries(m.providersUsed).filter(([, v]) => (v ?? 0) > 0).map(([provider]) => (
+                    <span key={provider} className={`provider-badge ${provider}`}>{provider}</span>
+                  ))}
+                </div>
+              </td>
               <td>
                 <div className="model-badges">
                   {Object.entries(m.modelsUsed).filter(([, v]) => (v ?? 0) > 0).map(([model, count]) => (

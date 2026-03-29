@@ -2,6 +2,28 @@ import { generateMockLogs, generateMockCloudLogs } from './mockData';
 import { aggregateLogs, aggregateCloudLogs } from './aggregator';
 import { runAllRules } from './rules';
 import { generateRecommendations, enhanceWithLLM } from './recommendations';
+import fs from 'node:fs';
+import path from 'node:path';
+
+// Manual .env loader for CLI since we avoid external dependencies
+function loadEnv() {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf-8');
+      envContent.split('\n').forEach(line => {
+        const [key, ...valueParts] = line.split('=');
+        if (key && valueParts.length > 0) {
+          process.env[key.trim()] = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore env loading errors in CLI
+  }
+}
+
+loadEnv();
 
 async function main() {
     const logs = generateMockLogs();

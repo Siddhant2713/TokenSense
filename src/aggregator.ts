@@ -27,7 +27,7 @@ export function calculateCost(model: Model, inputTokens: number, outputTokens: n
 // ─── LLM Aggregation ────────────────────────────────────────────
 export function aggregateLogs(logs: Log[]): TeamMetrics[] {
   const map = new Map<string, TeamMetrics>();
-  const teamWeeklyCosts = new Map<string, { thisWeek: number; lastWeek: number }>();
+  const teamWeeklyCosts = new Map<string, { thisWeek: number; lastWeek: number; totalLatency: number }>();
 
   const now = Date.now();
   const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -36,6 +36,7 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
     if (!map.has(log.team)) {
       map.set(log.team, {
         team: log.team,
+        orgId: log.orgId,
         totalCalls: 0,
         totalInputTokens: 0,
         totalOutputTokens: 0,
@@ -43,9 +44,11 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
         averageOutputTokens: 0,
         cost: 0,
         costVsLastWeek: 0,
-        modelsUsed: {}
+        modelsUsed: {},
+        providersUsed: {},
+        averageLatency: 0
       });
-      teamWeeklyCosts.set(log.team, { thisWeek: 0, lastWeek: 0 });
+      teamWeeklyCosts.set(log.team, { thisWeek: 0, lastWeek: 0, totalLatency: 0 });
     }
 
     const m = map.get(log.team)!;
@@ -56,9 +59,11 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
     m.totalOutputTokens += log.outputTokens;
 
     m.modelsUsed[log.model] = (m.modelsUsed[log.model] ?? 0) + 1;
+    m.providersUsed[log.provider] = (m.providersUsed[log.provider] ?? 0) + 1;
 
-    const c = calculateCost(log.model, log.inputTokens, log.outputTokens);
+    const c = log.cost;
     m.cost += c;
+    cw.totalLatency += log.latency;
 
     const logTime = new Date(log.timestamp).getTime();
     if (now - logTime <= ONE_WEEK_MS) {
@@ -72,6 +77,8 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
     if (m.totalCalls > 0) {
       m.averageInputTokens = m.totalInputTokens / m.totalCalls;
       m.averageOutputTokens = m.totalOutputTokens / m.totalCalls;
+      const cw = teamWeeklyCosts.get(team)!;
+      m.averageLatency = Math.round(cw.totalLatency / m.totalCalls);
     }
     const cw = teamWeeklyCosts.get(team)!;
     if (cw.lastWeek > 0) {
@@ -138,7 +145,7 @@ export function computeDailyCosts(llmLogs: Log[], cloudLogs: CloudResourceLog[])
     const date = log.timestamp.split('T')[0]!;
     if (!map.has(date)) map.set(date, { date, llmCost: 0, cloudCost: 0, totalCost: 0 });
     const entry = map.get(date)!;
-    entry.llmCost += calculateCost(log.model, log.inputTokens, log.outputTokens);
+    entry.llmCost += log.cost;
   }
 
   for (const log of cloudLogs) {

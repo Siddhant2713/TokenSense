@@ -3,7 +3,33 @@
 import { generateMockLogs, generateMockCloudLogs } from './mockData.js';
 import { aggregateLogs, aggregateCloudLogs } from './aggregator.js';
 import { runAllRules } from './rules.js';
-import { generateRecommendations } from './recommendations.js';
+import { generateAIRecommendations } from './recommendations.js';
+// @ts-ignore
+import fs from 'node:fs';
+// @ts-ignore
+import path from 'node:path';
+
+declare var process: any;
+
+// Manual .env loader for CLI since we avoid external dependencies
+function loadEnv() {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf-8');
+      envContent.split('\n').forEach((line: any) => {
+        const [key, ...valueParts] = line.split('=');
+        if (key && valueParts.length > 0) {
+          process.env[key.trim()] = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore env loading errors in CLI
+  }
+}
+
+loadEnv();
 
 // ─── Colors ─────────────────────────────────────────────────────
 const c = {
@@ -22,6 +48,7 @@ const c = {
   bgYellow:'\x1b[43m',
   bgBlue:  '\x1b[44m',
   bgCyan:  '\x1b[45m',
+  italic:  '\x1b[3m',
 };
 
 function pad(str: string, len: number): string {
@@ -33,18 +60,26 @@ function padRight(str: string, len: number): string {
 }
 
 // ─── Main ───────────────────────────────────────────────────────
-function main() {
+async function main() {
   // Generate data
   const llmLogs = generateMockLogs();
   const cloudLogs = generateMockCloudLogs();
   const teamMetrics = aggregateLogs(llmLogs);
   const cloudMetrics = aggregateCloudLogs(cloudLogs);
   const insights = runAllRules(llmLogs, teamMetrics, cloudMetrics);
-  const recommendations = generateRecommendations(insights, teamMetrics, cloudMetrics);
+  let enhanced: any = { executiveSummary: '', recommendations: [] };
+  try {
+    enhanced = await generateAIRecommendations({
+      insights,
+      metrics: teamMetrics,
+      cloudMetrics
+    });
+  } catch (error: any) {
+    console.log(`\n${c.red}⚠ TokenSense AI Analyst is currently unavailable: ${error.message}${c.reset}\n`);
+  }
 
-  const totalLLMCost = teamMetrics.reduce((s, m) => s + m.cost, 0);
-  const totalCloudCost = cloudMetrics.reduce((s, m) => s + m.totalCost, 0);
-  const totalSavings = recommendations.reduce((s, r) => s + r.monthlySaving, 0);
+  const recommendations = enhanced.recommendations;
+  const totalSavings = recommendations.reduce((s: number, r: any) => s + (r.recommendation.monthlySaving || 0), 0);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -64,10 +99,13 @@ function main() {
   console.log(`${c.bold}${c.white}EXECUTIVE SUMMARY${c.reset}`);
   console.log(`${c.dim}${'─'.repeat(62)}${c.reset}`);
 
-  const llmRecs = recommendations.filter(r => r.category === 'llm');
-  const cloudRecs = recommendations.filter(r => r.category === 'cloud');
-  const llmSavings = llmRecs.reduce((s, r) => s + r.monthlySaving, 0);
-  const cloudSavings = cloudRecs.reduce((s, r) => s + r.monthlySaving, 0);
+  const totalLLMCost = teamMetrics.reduce((s, m) => s + m.cost, 0);
+  const totalCloudCost = cloudMetrics.reduce((s, m) => s + m.totalCost, 0);
+
+  const llmRecs = recommendations.filter((r: any) => r.recommendation.category === 'llm');
+  const cloudRecs = recommendations.filter((r: any) => r.recommendation.category === 'cloud');
+  const llmSavings = llmRecs.reduce((s: number, r: any) => s + (r.recommendation.monthlySaving || 0), 0);
+  const cloudSavings = cloudRecs.reduce((s: number, r: any) => s + (r.recommendation.monthlySaving || 0), 0);
 
   console.log(`  ${c.cyan}●${c.reset} Analyzed ${c.bold}${llmLogs.length.toLocaleString()}${c.reset} LLM calls and ${c.bold}${cloudLogs.length.toLocaleString()}${c.reset} cloud resource entries`);
   console.log(`  ${c.cyan}●${c.reset} Total LLM Spend:   ${c.bold}$${totalLLMCost.toFixed(2)}${c.reset}`);
@@ -75,6 +113,13 @@ function main() {
   console.log(`  ${c.red}●${c.reset} ${c.bold}${insights.length} issues detected${c.reset}`);
   console.log(`  ${c.green}●${c.reset} Potential savings:  ${c.bold}${c.green}$${totalSavings.toFixed(2)}/month${c.reset} ($${(totalSavings * 12).toFixed(2)}/year)`);
   console.log('');
+
+  if (enhanced.executiveSummary) {
+    console.log(`${c.bold}${c.magenta}✨ AI ANALYST SUMMARY${c.reset}`);
+    console.log(`${c.dim}${'─'.repeat(62)}${c.reset}`);
+    console.log(`  ${c.italic}${enhanced.executiveSummary}${c.reset}`);
+    console.log('');
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // LLM COST BREAKDOWN BY TEAM
@@ -131,16 +176,19 @@ function main() {
   console.log(`${c.dim}${'─'.repeat(62)}${c.reset}`);
 
   // Pair insights with recommendations
-  for (const rec of [...recommendations].sort((a, b) => b.monthlySaving - a.monthlySaving)) {
+  const sortedRecs = [...recommendations].sort((a: any, b: any) => b.recommendation.monthlySaving - a.recommendation.monthlySaving);
+  for (const enhancedRec of sortedRecs) {
+    const rec = enhancedRec.recommendation;
     const severityColor = c.red;
     const categoryIcon = rec.category === 'llm' ? '🤖' : '☁️';
     const categoryLabel = rec.category === 'llm' ? 'LLM' : 'CLOUD';
 
     console.log('');
     console.log(`  ${severityColor}[HIGH]${c.reset}  ${c.bold}${rec.team}${c.reset} — ${rec.issue}  ${c.dim}[${categoryLabel}]${c.reset} ${categoryIcon}`);
-    console.log(`  ${c.dim}        ${rec.evidence}${c.reset}`);
-    console.log(`  ${c.green}   💡   ${rec.action}${c.reset}`);
-    console.log(`  ${c.dim}        Saving: ${c.reset}${c.bold}${c.green}$${rec.monthlySaving.toFixed(2)}/month${c.reset}  ${c.dim}|${c.reset}  Effort: ${c.bold}${rec.effort}${c.reset}  ${c.dim}|${c.reset}  Confidence: ${c.bold}${rec.confidence}${c.reset}`);
+    console.log(`  ${c.cyan}💡   Expected Action: ${c.white}${rec.action}${c.reset}`);
+    console.log(`  ${c.magenta}💡   AI Analysis:     ${c.white}${enhancedRec.explanation}${c.reset}`);
+    console.log(`  ${c.magenta}❓   Why it happened: ${c.dim}${enhancedRec.whyItHappened}${c.reset}`);
+    console.log(`  ${c.dim}        Saving: ${c.reset}${c.bold}${c.green}$${rec.monthlySaving?.toFixed(2)}/month${c.reset}  ${c.dim}|${c.reset}  Effort: ${c.bold}${rec.effort}${c.reset}  ${c.dim}|${c.reset}  Confidence: ${c.bold}${rec.confidence}${c.reset}`);
   }
 
   console.log('');
@@ -162,4 +210,4 @@ function main() {
   console.log('');
 }
 
-main();
+main().catch(console.error);

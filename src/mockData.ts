@@ -11,21 +11,52 @@ function generateId(): string {
 }
 
 // ─── LLM Logs ──────────────────────────────────────────────────
+const PRICING: Record<string, { in: number; out: number }> = {
+  'gpt-4o': { in: 5.0, out: 15.0 },
+  'gpt-4o-mini': { in: 0.15, out: 0.60 },
+  'gpt-3.5-turbo': { in: 0.50, out: 1.50 },
+  'claude-3-opus': { in: 15.0, out: 75.0 },
+  'claude-3-haiku': { in: 0.25, out: 1.25 },
+  'gemini-1.5-pro': { in: 3.5, out: 10.5 },
+  'gemini-1.5-flash': { in: 0.35, out: 1.05 }
+};
+
+function getProvider(model: string): string {
+  if (model.includes('gpt')) return 'openai';
+  if (model.includes('claude')) return 'anthropic';
+  if (model.includes('gemini')) return 'google';
+  return 'unknown';
+}
+
+function calculateCost(model: string, input: number, output: number): number {
+  const rates = PRICING[model as keyof typeof PRICING] || { in: 0, out: 0 };
+  return (input / 1_000_000) * rates.in + (output / 1_000_000) * rates.out;
+}
+
 export function generateMockLogs(): Log[] {
   const logs: Log[] = [];
+  const orgId = 'org_tok_xyz987';
 
   for (let day = 29; day >= 0; day--) {
     const timestamp = generateTimestamp(day);
 
     // 1. Payments: MODEL_MISUSE — using gpt-4o for simple classification (avg output 42 tokens)
     for (let i = 0; i < 413; i++) {
+      const inputs = 400 + Math.floor(Math.random() * 50);
+      const outputs = 42;
+      const model = 'gpt-4o';
       logs.push({
         id: generateId(),
+        orgId,
+        userId: 'usr_pay_01',
         timestamp,
         team: 'Payments',
-        model: 'gpt-4o',
-        inputTokens: 400 + Math.floor(Math.random() * 50),
-        outputTokens: 42,
+        model,
+        provider: getProvider(model),
+        inputTokens: inputs,
+        outputTokens: outputs,
+        cost: calculateCost(model, inputs, outputs),
+        latency: 1200 + Math.floor(Math.random() * 500),
         promptHash: generateId(),
         feature: 'invoice-classifier',
         taskComplexity: 'simple'
@@ -34,13 +65,21 @@ export function generateMockLogs(): Log[] {
 
     // 2. Marketing: LONG_PROMPTS — average 3200 input tokens
     for (let i = 0; i < 273; i++) {
+      const inputs = 3200 + Math.floor(Math.random() * 500);
+      const outputs = 500;
+      const model = 'gpt-4o';
       logs.push({
         id: generateId(),
+        orgId,
+        userId: 'usr_mkt_02',
         timestamp,
         team: 'Marketing',
-        model: 'gpt-4o',
-        inputTokens: 3200 + Math.floor(Math.random() * 500),
-        outputTokens: 500,
+        model,
+        provider: getProvider(model),
+        inputTokens: inputs,
+        outputTokens: outputs,
+        cost: calculateCost(model, inputs, outputs),
+        latency: 2800 + Math.floor(Math.random() * 800),
         promptHash: generateId(),
         taskComplexity: 'moderate'
       });
@@ -49,13 +88,21 @@ export function generateMockLogs(): Log[] {
     // 3. Engineering: CACHE_WASTE — 200 repeat prompt hashes per day
     const cacheWasteHash = 'hash_engineer_cache_waste_' + day;
     for (let i = 0; i < 203; i++) {
+      const inputs = 1000;
+      const outputs = 150;
+      const model = 'gpt-4o';
       logs.push({
         id: generateId(),
+        orgId,
+        userId: 'usr_eng_05',
         timestamp,
         team: 'Engineering',
-        model: 'gpt-4o',
-        inputTokens: 1000,
-        outputTokens: 150,
+        model,
+        provider: getProvider(model),
+        inputTokens: inputs,
+        outputTokens: outputs,
+        cost: calculateCost(model, inputs, outputs),
+        latency: 1500 + Math.floor(Math.random() * 400),
         promptHash: i < 200 ? cacheWasteHash : generateId(),
         feature: 'code-reviewer',
         taskComplexity: 'complex'
@@ -65,13 +112,21 @@ export function generateMockLogs(): Log[] {
     // 4. Data: SPIKE on Day 18 (3.1x normal)
     const dataCalls = day === 11 ? 328 : 80;
     for (let i = 0; i < dataCalls; i++) {
+      const inputs = 500;
+      const outputs = 50;
+      const model = 'gpt-4o';
       logs.push({
         id: generateId(),
+        orgId,
+        userId: 'usr_dat_03',
         timestamp,
         team: 'Data',
-        model: 'gpt-4o',
-        inputTokens: 500,
-        outputTokens: 50,
+        model,
+        provider: getProvider(model),
+        inputTokens: inputs,
+        outputTokens: outputs,
+        cost: calculateCost(model, inputs, outputs),
+        latency: 1100 + Math.floor(Math.random() * 300),
         promptHash: generateId(),
         feature: 'batch-job',
         taskComplexity: 'simple'
@@ -80,13 +135,21 @@ export function generateMockLogs(): Log[] {
 
     // 5. Support: Clean usage with gpt-3.5-turbo
     for (let i = 0; i < 1473; i++) {
+      const inputs = 200 + Math.floor(Math.random() * 100);
+      const outputs = 100 + Math.floor(Math.random() * 50);
+      const model = 'gpt-3.5-turbo';
       logs.push({
         id: generateId(),
+        orgId,
+        userId: 'usr_sup_09',
         timestamp,
         team: 'Support',
-        model: 'gpt-3.5-turbo',
-        inputTokens: 200 + Math.floor(Math.random() * 100),
-        outputTokens: 100 + Math.floor(Math.random() * 50),
+        model,
+        provider: getProvider(model),
+        inputTokens: inputs,
+        outputTokens: outputs,
+        cost: calculateCost(model, inputs, outputs),
+        latency: 400 + Math.floor(Math.random() * 200),
         promptHash: generateId(),
         feature: 'support-chatbot',
         taskComplexity: 'simple'
@@ -95,13 +158,21 @@ export function generateMockLogs(): Log[] {
 
     // 6. Analytics: MODEL_DOWNGRADE candidate — using claude-3-opus for simple summaries
     for (let i = 0; i < 150; i++) {
+      const inputs = 300 + Math.floor(Math.random() * 100);
+      const outputs = 60;
+      const model = 'claude-3-opus';
       logs.push({
         id: generateId(),
+        orgId,
+        userId: 'usr_ana_07',
         timestamp,
         team: 'Analytics',
-        model: 'claude-3-opus',
-        inputTokens: 300 + Math.floor(Math.random() * 100),
-        outputTokens: 60,
+        model,
+        provider: getProvider(model),
+        inputTokens: inputs,
+        outputTokens: outputs,
+        cost: calculateCost(model, inputs, outputs),
+        latency: 3500 + Math.floor(Math.random() * 1000),
         promptHash: generateId(),
         feature: 'report-summary',
         taskComplexity: 'simple'

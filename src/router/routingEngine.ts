@@ -16,7 +16,11 @@ interface RoutingContext {
 }
 
 export class RoutingEngine {
-  constructor(private registry: ModelRegistry) {}
+  private registry: ModelRegistry;
+
+  constructor(registry: ModelRegistry) {
+    this.registry = registry;
+  }
 
   route(ctx: RoutingContext): RoutingDecision {
     if (ctx.userConfig?.modelOverrides?.[ctx.taskType]) {

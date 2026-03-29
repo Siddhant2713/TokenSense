@@ -21,11 +21,16 @@ export interface CloudResourceLog {
 // ─── LLM Log ──────────────────────────────────────────────────
 export interface Log {
   id: string;
+  orgId: string;
+  userId: string;
   timestamp: string;
   team: string;
   model: Model;
+  provider: string;
   inputTokens: number;
   outputTokens: number;
+  cost: number;
+  latency: number;
   promptHash: string;
   feature?: string;
   taskComplexity?: 'simple' | 'moderate' | 'complex';  // determines if model is overkill
@@ -34,6 +39,7 @@ export interface Log {
 // ─── Aggregated Metrics ───────────────────────────────────────
 export interface TeamMetrics {
   team: string;
+  orgId: string;
   totalCalls: number;
   totalInputTokens: number;
   totalOutputTokens: number;
@@ -42,6 +48,8 @@ export interface TeamMetrics {
   cost: number;
   costVsLastWeek: number;
   modelsUsed: Partial<Record<Model, number>>;
+  providersUsed: Partial<Record<string, number>>;
+  averageLatency: number;
 }
 
 export interface CloudResourceMetrics {
@@ -82,8 +90,9 @@ export interface Recommendation {
 }
 
 export interface LLMEnhancerInput {
-  recommendations: Recommendation[];
-  totalMonthlySaving: number;
+  insights: Insight[];
+  metrics: TeamMetrics[];
+  cloudMetrics: CloudResourceMetrics[];
 }
 
 export interface EnhancedRecommendation {
