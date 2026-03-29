@@ -10,6 +10,9 @@ import { generateAIRecommendations } from './recommendations';
 import type { Insight, TeamMetrics, CloudResourceMetrics, EnhancedOutput } from './types';
 
 import { generateRouterMockData, type RouterMockData } from './routerMockData';
+import {
+  LayoutDashboard, BarChart2, Cloud, Cpu, Sparkles, AlertCircle, CircleDollarSign, TrendingUp, TrendingDown, ChevronRight
+} from 'lucide-react';
 
 import './App.css';
 
@@ -42,7 +45,7 @@ function App() {
     };
   }, []);
 
-  const totalSavings = enhancedData 
+  const totalSavings = enhancedData
     ? enhancedData.recommendations.reduce((acc, curr) => acc + (curr.recommendation.monthlySaving || 0), 0)
     : 0;
 
@@ -68,107 +71,146 @@ function App() {
   }, [insights, teamMetrics, cloudMetrics]);
 
   return (
-    <div className="app-layout">
-      {/* Header */}
-      <header className="header" id="app-header">
-        <div className="header-brand">
-          <div className="header-logo">T</div>
-          <div>
-            <div className="header-title">TokenSense</div>
-            <div className="header-subtitle">AI-Powered Cost Optimization</div>
-          </div>
+    <div className="app-root">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-topbar">
+          <div className="brand-line"></div>
+          <div className="brand-text">TOKEN<span>SENSE</span></div>
+          <div className="brand-text sub">COST INTELLIGENCE</div>
         </div>
-        <div className="header-actions">
-          <span className="header-badge">● Live — 30 Day Window</span>
+
+        <nav className="nav-menu">
+          <button
+            className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('overview')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
+            <LayoutDashboard size={18} /> Overview
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'llm' ? 'active' : ''}`}
+            onClick={() => setActiveTab('llm')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
+            <BarChart2 size={18} /> LLM Usage
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'cloud' ? 'active' : ''}`}
+            onClick={() => setActiveTab('cloud')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
+            <Cloud size={18} /> Cloud Resources
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'router' ? 'active' : ''}`}
+            onClick={() => setActiveTab('router')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+          >
+            <Cpu size={18} /> Smart Router
+          </button>
+        </nav>
+
+        <div className="status-block">
+          <div className="status-live">LIVE</div>
+          <div className="status-window">30-DAY WINDOW</div>
+        </div>
+      </aside>
+
+      {/* Topbar */}
+      <header className="topbar">
+        <div className="topbar-title">
+          {activeTab === 'overview' ? 'Overview' :
+            activeTab === 'llm' ? 'LLM Usage' :
+              activeTab === 'cloud' ? 'Cloud Resources' :
+                'Smart Router'}
+        </div>
+        <div className="topbar-right">
+          <span className="org-id">ORG-8F92A</span>
+          <span className="date-badge">Oct 1 - Oct 30</span>
         </div>
       </header>
 
-      <main className="main-content">
-        {/* KPI Cards */}
-        <section className="metrics-grid" id="kpi-cards">
-          <div className="metric-card animate-in">
-            <div className="metric-label">Total LLM Spend</div>
-            <div className="metric-value">${totals.totalLLMCost.toFixed(2)}</div>
-            <div className="metric-change positive">↑ Last 30 days</div>
-          </div>
-          <div className="metric-card animate-in">
-            <div className="metric-label">Total Cloud Spend</div>
-            <div className="metric-value">${totals.totalCloudCost.toFixed(2)}</div>
-            <div className="metric-change positive">↑ Cloudflare + AWS</div>
-          </div>
-          <div className="metric-card danger animate-in">
-            <div className="metric-label">Issues Found</div>
-            <div className="metric-value">{totals.totalInsights}</div>
-            <div className="metric-change positive">⚠ Needs attention</div>
-          </div>
-          <div className="metric-card success animate-in">
-            <div className="metric-label">Potential Savings</div>
-            <div className="metric-value" style={{ color: 'var(--accent-green)' }}>
-              {isAiLoading ? <span className="loading-spinner-inline" /> : `$${totalSavings.toFixed(2)}`}
+      {/* Canvas */}
+      <main className="canvas">
+        {/* KPI Strip */}
+        <div className="kpi-strip">
+          <div className="kpi-block group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="kpi-label">Total LLM Spend</div>
+              <TrendingUp className="kpi-icon" size={16} color="var(--accent)" />
             </div>
-            <div className="metric-change negative">↓ Per month</div>
+            <div className="kpi-value">${totals.totalLLMCost.toFixed(2)}</div>
+            <div className="kpi-sublabel">Last 30 days</div>
           </div>
-        </section>
-
-        {/* Tab Bar */}
-        <div className="tab-bar" id="tab-bar">
-          <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}>Overview</button>
-          <button className={`tab-btn ${activeTab === 'llm' ? 'active' : ''}`}
-            onClick={() => setActiveTab('llm')}>LLM Usage</button>
-          <button className={`tab-btn ${activeTab === 'cloud' ? 'active' : ''}`}
-            onClick={() => setActiveTab('cloud')}>Cloud Resources</button>
-          <button className={`tab-btn ${activeTab === 'router' ? 'active' : ''}`}
-            onClick={() => setActiveTab('router')}>Smart Router</button>
+          <div className="kpi-block group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="kpi-label">Total Cloud Spend</div>
+              <TrendingDown className="kpi-icon" size={16} color="var(--violet)" />
+            </div>
+            <div className="kpi-value">${totals.totalCloudCost.toFixed(2)}</div>
+            <div className="kpi-sublabel">Cloudflare + AWS</div>
+          </div>
+          <div className="kpi-block group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="kpi-label">Issues Found</div>
+              <AlertCircle className="kpi-icon" size={16} color="var(--red)" />
+            </div>
+            <div className="kpi-value red">{totals.totalInsights}</div>
+            <div className="kpi-sublabel">Needs attention</div>
+          </div>
+          <div className="kpi-block group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="kpi-label">Potential Savings</div>
+              <CircleDollarSign className="kpi-icon" size={16} color="var(--green)" />
+            </div>
+            <div className="kpi-value green">
+              {isAiLoading ? '...' : `$${totalSavings.toFixed(2)}`}
+            </div>
+            <div className="kpi-sublabel">Per month</div>
+          </div>
         </div>
 
-        {activeTab === 'overview' && (
-          <>
-            {/* AI Executive Summary */}
-            <section className="ai-summary-card animate-in">
-              <div className="section-header">
-                <h2 className="section-title">
-                  <span className="icon">✨</span> AI Executive Summary
-                  {isAiLoading && <span className="loading-spinner-inline"></span>}
-                </h2>
-              </div>
-              <div className="ai-summary-text">
-                {isAiLoading ? 'TokenSense AI is analyzing your infrastructure spend...' : 
-                 enhancedData ? enhancedData.executiveSummary : 'Run AI analyst to get deeper insights.'}
-              </div>
-            </section>
+        {/* Executive Summary Line */}
+        <div className="exec-summary-line group">
+          <Sparkles className="exec-icon" size={16} color="var(--accent)" />
+          {isAiLoading ? (
+            <div className="shimmer-bar"></div>
+          ) : (
+            <div className="exec-text">
+              {enhancedData ? enhancedData.executiveSummary : 'Run AI analyst to get deeper insights.'}
+            </div>
+          )}
+        </div>
 
-            {/* Cost Chart */}
+        {activeTab === 'overview' ? (
+          <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <CostChart dailyCosts={dailyCosts} />
-
-            {/* Insights + Recommendations */}
             <div className="two-col-grid">
               <InsightsPanel insights={insights} />
-              <RecommendationsPanel 
+              <RecommendationsPanel
                 enhancedRecommendations={enhancedData?.recommendations}
                 isLoading={isAiLoading}
                 error={aiError}
               />
             </div>
-          </>
-        )}
-
-        {activeTab === 'llm' && (
-          <>
+          </div>
+        ) : activeTab === 'llm' ? (
+          <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <TeamMetricsTable metrics={teamMetrics} />
-          </>
-        )}
-
-        {activeTab === 'cloud' && (
-          <>
+          </div>
+        ) : activeTab === 'cloud' ? (
+          <div className="tab-content">
             <CloudMetricsTable metrics={cloudMetrics} />
-          </>
-        )}
-
-        {activeTab === 'router' && (
-          <>
+          </div>
+        ) : activeTab === 'router' ? (
+          <div className="tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <RouterDashboard data={routerData} />
-          </>
+          </div>
+        ) : (
+          <div style={{ color: 'var(--text-muted)' }}>
+            {activeTab} content placeholder...
+          </div>
         )}
       </main>
     </div>
@@ -178,95 +220,112 @@ function App() {
 // ─── Cost Chart ────────────────────────────────────────────────
 function CostChart({ dailyCosts }: { dailyCosts: { date: string; llmCost: number; cloudCost: number; totalCost: number }[] }) {
   return (
-    <div className="chart-container animate-in" id="cost-chart">
-      <div className="section-header">
-        <h2 className="section-title"><span className="icon">📊</span> Daily Cost Breakdown (30 Days)</h2>
-      </div>
-      <ResponsiveContainer width="100%" height={320}>
+    <details className="chart-container" id="cost-chart" open>
+      <summary className="section-header-line group">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div className="section-title">DAILY COST BREAKDOWN</div>
+          <div className="section-legend">
+            <div className="legend-item"><span className="legend-dot llm"></span>LLM</div>
+            <div className="legend-item"><span className="legend-dot cloud"></span>Cloud</div>
+          </div>
+        </div>
+        <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+      </summary>
+      <ResponsiveContainer width="100%" height={260}>
         <AreaChart data={dailyCosts}>
           <defs>
             <linearGradient id="gradLLM" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.08} />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradCloud" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--violet)" stopOpacity={0.08} />
+              <stop offset="100%" stopColor="var(--violet)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-          <XAxis dataKey="date" tick={{ fill: '#5a6480', fontSize: 11 }}
+          <CartesianGrid strokeDasharray="1 4" stroke="var(--border-base)" />
+          <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} axisLine={false}
             tickFormatter={(v: string) => v.slice(5)} />
-          <YAxis tick={{ fill: '#5a6480', fontSize: 11 }}
+          <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} axisLine={false}
             tickFormatter={(v: number) => `$${v}`} />
           <RechartsTooltip
-            contentStyle={{ background: '#1a1f35', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, fontSize: 12 }}
-            labelStyle={{ color: '#f0f4ff' }}
+            contentStyle={{ background: '#0b0f1a', border: '1px solid var(--border-base)', borderRadius: 'var(--radius)', boxShadow: 'none', fontSize: 12 }}
+            labelStyle={{ color: 'var(--text-primary)' }}
+            itemStyle={{ color: 'var(--text-secondary)' }}
             formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
           />
-          <Legend />
-          <Area type="monotone" dataKey="llmCost" name="LLM Spend" stroke="#8b5cf6" fill="url(#gradLLM)" strokeWidth={2} />
-          <Area type="monotone" dataKey="cloudCost" name="Cloud Spend" stroke="#06b6d4" fill="url(#gradCloud)" strokeWidth={2} />
+          <Area type="monotone" dataKey="llmCost" name="LLM Spend" stroke="var(--accent)" fill="url(#gradLLM)" strokeWidth={1.5} />
+          <Area type="monotone" dataKey="cloudCost" name="Cloud Spend" stroke="var(--violet)" fill="url(#gradCloud)" strokeWidth={1.5} />
         </AreaChart>
       </ResponsiveContainer>
-    </div>
+    </details>
   );
 }
 
 // ─── Insights Panel ────────────────────────────────────────────
 function InsightsPanel({ insights }: { insights: Insight[] }) {
   return (
-    <div className="insights-panel animate-in" id="insights-panel">
-      <div className="section-header">
-        <h2 className="section-title"><span className="icon">🔍</span> Issues Detected</h2>
-      </div>
-      {insights.map((insight, i) => (
-        <div className="insight-card" key={i}>
-          <div className="insight-header">
-            <span className={`insight-rule ${insight.rule}`}>{insight.rule.replace(/_/g, ' ')}</span>
-            <span className={`insight-severity ${insight.severity}`}>{insight.severity}</span>
-          </div>
-          <div className="insight-team">{insight.team}</div>
-          <div className="insight-evidence">{insight.evidence}</div>
-          {insight.suggestedFix && (
-            <div className="insight-fix">{insight.suggestedFix}</div>
-          )}
+    <details className="chart-container" id="insights-panel" open>
+      <summary className="section-header-line group">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div className="section-title">ISSUES DETECTED</div>
+          <div className="section-legend"></div>
         </div>
-      ))}
-    </div>
+        <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+      </summary>
+      <div>
+        {insights.map((insight, i) => (
+          <div className="issue-row" key={i}>
+            <div className={`status-pill pill-${insight.severity.toLowerCase()}`}>
+              {insight.severity}
+            </div>
+            <div className="issue-rule" title={insight.rule}>{insight.rule}</div>
+            <div className="issue-team" title={insight.team}>{insight.team}</div>
+            <div className="issue-evidence" title={insight.evidence}>{insight.evidence}</div>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
 // ─── Recommendations Panel ─────────────────────────────────────
-function RecommendationsPanel({ 
+function RecommendationsPanel({
   enhancedRecommendations,
   isLoading,
   error
-}: { 
+}: {
   enhancedRecommendations?: any[],
   isLoading: boolean,
   error?: string | null
 }) {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
   if (isLoading) {
     return (
-      <div className="insights-panel animate-in" id="recommendations-panel">
-        <div className="section-header">
-          <h2 className="section-title"><span className="icon">⏳</span> TokenSense AI is analyzing...</h2>
-        </div>
-      </div>
+      <details className="chart-container" id="recommendations-panel" open>
+        <summary className="section-header-line group">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="section-title">AI RECOMMENDATIONS</div>
+          </div>
+          <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+        </summary>
+        <div className="shimmer-bar" style={{ marginTop: 24 }}></div>
+      </details>
     );
   }
 
   if (error) {
     return (
-      <div className="insights-panel animate-in" id="recommendations-panel">
-        <div className="section-header">
-          <h2 className="section-title"><span className="icon">⚠️</span> AI Analyst Unavailable</h2>
-        </div>
-        <div className="insight-card">
-          <p style={{ color: 'var(--text-muted)' }}>{error}</p>
-        </div>
-      </div>
+      <details className="chart-container" id="recommendations-panel" open>
+        <summary className="section-header-line group">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="section-title">AI RECOMMENDATIONS</div>
+          </div>
+          <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+        </summary>
+        <div style={{ color: 'var(--text-muted)' }}>{error}</div>
+      </details>
     );
   }
 
@@ -275,96 +334,121 @@ function RecommendationsPanel({
   );
 
   return (
-    <div className="insights-panel animate-in" id="recommendations-panel">
-      <div className="section-header">
-        <h2 className="section-title"><span className="icon">💡</span> AI Recommendations</h2>
-      </div>
-      {sorted.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No recommendations available.</p>}
-      {sorted.map((rec, i) => (
-        <div className="insight-card" key={i}>
-          <div className="insight-header">
-            <span className={`rec-category ${rec.recommendation.category}`}>{rec.recommendation.category.toUpperCase()}</span>
-            <span className="rec-saving">-${rec.recommendation.monthlySaving?.toFixed(2)}/mo</span>
-          </div>
-          <div className="insight-team">{rec.recommendation.team}</div>
-          <div className="rec-issue">{rec.recommendation.issue}</div>
-          
-          <div className="ai-enhanced-content">
-            <div className="ai-explanation">
-              <strong>Expected Action:</strong> {rec.recommendation.action}
-            </div>
-            <div className="ai-explanation" style={{ marginTop: '0.5rem' }}>
-              <strong>AI Analysis:</strong> {rec.explanation}
-            </div>
-            <div className="ai-why" style={{ marginTop: '0.5rem' }}>
-              <strong>Why it happened:</strong> {rec.whyItHappened}
-            </div>
-          </div>
-
-          <div className="rec-meta" style={{ marginTop: 8 }}>
-            <span className="rec-meta-tag">Effort: <span>{rec.recommendation.effort}</span></span>
-            <span className="rec-meta-tag">Confidence: <span>{rec.recommendation.confidence}</span></span>
-          </div>
+    <details className="chart-container" id="recommendations-panel" open>
+      <summary className="section-header-line group">
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="section-title">AI RECOMMENDATIONS</div>
         </div>
-      ))}
-    </div>
+        <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+      </summary>
+      <div>
+        {sorted.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No recommendations available.</p>}
+        {sorted.map((rec, i) => {
+          const isExpanded = expandedIndex === i;
+          return (
+            <div className={`rec-row ${isExpanded ? 'expanded' : ''}`} key={i} onClick={() => setExpandedIndex(isExpanded ? null : i)}>
+              <div className="rec-header-top">
+                <div className="rec-team">{rec.recommendation.team}</div>
+                <div className="rec-saving">${rec.recommendation.monthlySaving?.toLocaleString()}/mo</div>
+              </div>
+              <div className="rec-header-bottom">
+                <div className="rec-issue-title">{rec.recommendation.rule || rec.recommendation.issue}</div>
+                <div style={{ flex: 1, height: 1, background: 'var(--border-dim)', margin: '0 12px' }}></div>
+                <div className="rec-effort">{rec.recommendation.effort}</div>
+              </div>
+              <div className="rec-expandable">
+                <div className="rec-content">
+                  <div className="rec-text-block">
+                    <strong>Expected Action</strong>
+                    <span>{rec.recommendation.action}</span>
+                  </div>
+                  <div className="rec-text-block">
+                    <strong>AI Analysis</strong>
+                    <span>{rec.explanation}</span>
+                  </div>
+                  <div className="rec-text-block">
+                    <strong>Why it happened</strong>
+                    <span>{rec.whyItHappened}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 
-// ─── Team Metrics Table (LLM) ──────────────────────────────────
 function TeamMetricsTable({ metrics }: { metrics: TeamMetrics[] }) {
-  const sorted = [...metrics].sort((a, b) => b.cost - a.cost);
+  const sortedByCost = [...metrics].sort((a, b) => b.cost - a.cost);
+
   return (
-    <div className="table-container animate-in" id="team-metrics-table">
-      <div className="section-header">
-        <h2 className="section-title"><span className="icon">🤖</span> LLM Spend by Team</h2>
-      </div>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Team</th>
-            <th>Total Calls</th>
-            <th>Avg Input Tokens</th>
-            <th>Avg Output Tokens</th>
-            <th>Avg Latency</th>
-            <th>Providers</th>
-            <th>Models Used</th>
-            <th>Total Cost</th>
-            <th>vs Last Week</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map(m => (
-            <tr key={m.team}>
-              <td style={{ fontWeight: 600 }}>{m.team}</td>
-              <td>{m.totalCalls.toLocaleString()}</td>
-              <td>{Math.round(m.averageInputTokens).toLocaleString()}</td>
-              <td>{Math.round(m.averageOutputTokens).toLocaleString()}</td>
-              <td>{m.averageLatency}ms</td>
-              <td>
-                <div className="model-badges">
-                  {Object.entries(m.providersUsed).filter(([, v]) => (v ?? 0) > 0).map(([provider]) => (
-                    <span key={provider} className={`provider-badge ${provider}`}>{provider}</span>
-                  ))}
-                </div>
-              </td>
-              <td>
-                <div className="model-badges">
-                  {Object.entries(m.modelsUsed).filter(([, v]) => (v ?? 0) > 0).map(([model, count]) => (
-                    <span key={model} className="model-badge">{model} ({count?.toLocaleString()})</span>
-                  ))}
-                </div>
-              </td>
-              <td className="cost-cell">${m.cost.toFixed(2)}</td>
-              <td>
-                <span className={`change-badge ${m.costVsLastWeek > 0 ? 'up' : m.costVsLastWeek < 0 ? 'down' : 'flat'}`}>
-                  {m.costVsLastWeek > 0 ? '↑' : m.costVsLastWeek < 0 ? '↓' : '—'} {Math.abs(m.costVsLastWeek)}%
-                </span>
-              </td>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* Section 1: Team Cost Bar Chart */}
+      <details className="chart-container" id="team-cost-chart" open>
+        <summary className="section-header-line group">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div className="section-title">TEAM COST BREAKDOWN</div>
+            <div className="section-legend">
+              <div className="legend-item"><span className="legend-dot" style={{ background: 'var(--accent)' }}></span>Cost</div>
+            </div>
+          </div>
+          <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+        </summary>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={sortedByCost}>
+            <CartesianGrid strokeDasharray="1 4" stroke="var(--border-base)" />
+            <XAxis dataKey="team" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+            <RechartsTooltip
+              contentStyle={{ background: '#0b0f1a', border: '1px solid var(--border-base)', borderRadius: 'var(--radius)', boxShadow: 'none', fontSize: 12 }}
+              labelStyle={{ color: 'var(--text-primary)' }}
+              itemStyle={{ color: 'var(--text-secondary)' }}
+              formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cost']}
+              cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+            />
+            <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
+              {sortedByCost.map((_, i) => (
+                <Cell key={i} className="bar-chart-fill" />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </details>
+
+      {/* Section 2: Slim Team Table */}
+      <div className="table-container" style={{ padding: 0, background: 'transparent', border: 'none' }}>
+        <table className="slim-table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Calls</th>
+              <th>Avg Input</th>
+              <th>Primary Model</th>
+              <th className="right-align">Cost</th>
+              <th className="right-align">WoW</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sortedByCost.map(m => {
+              const primaryModel = Object.entries(m.modelsUsed).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]?.[0] || 'Unknown';
+              return (
+                <tr key={m.team}>
+                  <td style={{ fontWeight: 600 }}>{m.team}</td>
+                  <td className="mono">{m.totalCalls.toLocaleString()}</td>
+                  <td className="mono">{Math.round(m.averageInputTokens).toLocaleString()}</td>
+                  <td className="mono">{primaryModel}</td>
+                  <td className="mono right-align">${m.cost.toFixed(2)}</td>
+                  <td className={`mono right-align ${m.costVsLastWeek > 0 ? 'wow-positive' : m.costVsLastWeek < 0 ? 'wow-negative' : 'wow-neutral'}`}>
+                    {m.costVsLastWeek > 0 ? `+${m.costVsLastWeek}%` : m.costVsLastWeek < 0 ? `${m.costVsLastWeek}%` : '0%'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -373,58 +457,59 @@ function TeamMetricsTable({ metrics }: { metrics: TeamMetrics[] }) {
 function CloudMetricsTable({ metrics }: { metrics: CloudResourceMetrics[] }) {
   const sorted = [...metrics].sort((a, b) => b.wastedCost - a.wastedCost);
   return (
-    <div className="table-container animate-in" id="cloud-metrics-table">
-      <div className="section-header">
-        <h2 className="section-title"><span className="icon">☁️</span> Cloud Resource Usage</h2>
-      </div>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Provider</th>
-            <th>Service</th>
-            <th>Resource</th>
-            <th>Team</th>
-            <th>RAM Utilization</th>
-            <th>Avg Exec Time</th>
-            <th>Total Cost</th>
-            <th>Wasted Cost</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((m, i) => (
-            <tr key={i}>
-              <td><span className={`provider-badge ${m.provider}`}>{m.provider}</span></td>
-              <td>{m.service}</td>
-              <td style={{ fontWeight: 600 }}>{m.resourceName}</td>
-              <td>{m.team}</td>
-              <td>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className="utilization-bar">
-                    <div
-                      className={`utilization-fill ${m.ramUtilization < 30 ? 'low' : m.ramUtilization < 70 ? 'medium' : 'high'}`}
-                      style={{ width: `${Math.min(m.ramUtilization, 100)}%` }}
-                    />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <details className="chart-container" style={{ padding: 0, background: 'transparent', border: 'none' }} open>
+        <summary className="section-header-line group" style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="section-title">CLOUD RESOURCES</div>
+          </div>
+          <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+        </summary>
+        <div className="cloud-grid">
+          {sorted.map((m, i) => {
+            const wasteHigh = m.ramUtilization < 25;
+            const wasteLow = m.ramUtilization > 70;
+
+            let fillClass = 'good';
+            if (m.ramUtilization < 30) fillClass = 'danger';
+            else if (m.ramUtilization < 70) fillClass = 'warn';
+
+            return (
+              <div key={i} className={`cloud-card ${wasteHigh ? 'waste-high' : wasteLow ? 'waste-low' : ''}`}>
+                <div className="cc-header">
+                  <div>
+                    <div className="cc-title">{m.resourceName}</div>
+                    <div className="cc-team">{m.team}</div>
                   </div>
-                  <span style={{ fontSize: 12, color: m.ramUtilization < 30 ? 'var(--accent-red)' : 'var(--text-secondary)' }}>
-                    {m.avgUsedRAM_MB > 0 ? `${m.avgUsedRAM_MB}/${m.avgAllocatedRAM_MB}MB (${m.ramUtilization}%)` : 'N/A'}
+                  <div className={`cc-provider ${m.provider.toLowerCase()}`}>{m.provider}</div>
+                </div>
+
+                <div className="cc-ram">
+                  <span className="ram-label">RAM</span>
+                  <div className="ram-track">
+                    <div className={`ram-fill ${fillClass}`} style={{ width: `${m.ramUtilization}%` }}></div>
+                  </div>
+                  <span>{m.ramUtilization}%</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{Math.round((m.ramUtilization / 100) * (m.provider === 'aws' ? 128 : 64))}/{m.provider === 'aws' ? 128 : 64}MB</span>
+                </div>
+
+                <div className="cc-cost">
+                  <span><span className="label">Cost</span>${m.totalCost.toFixed(2)}</span>
+                  <span className={`cc-wasted ${wasteHigh ? 'danger' : ''}`}>
+                    <span className="label">Wasted</span>${m.wastedCost.toFixed(2)} {wasteHigh ? '↑' : ''}
                   </span>
                 </div>
-              </td>
-              <td>{m.avgExecutionTimeMs < 86400000 ? `${m.avgExecutionTimeMs}ms` : 'Always On'}</td>
-              <td className="cost-cell">${m.totalCost.toFixed(2)}</td>
-              <td className="cost-cell" style={{ color: m.wastedCost > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
-                ${m.wastedCost.toFixed(2)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </div>
+            );
+          })}
+        </div>
+      </details>
     </div>
   );
 }
 
 // ─── Router Dashboard ─────────────────────────────────────────
-const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#3b82f6'];
+const ROUTER_COLORS = ['#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a'];
 
 function RouterDashboard({ data }: { data: RouterMockData }) {
   const { metrics, logs, models, latencyStats } = data;
@@ -439,173 +524,187 @@ function RouterDashboard({ data }: { data: RouterMockData }) {
   const recentLogs = logs.slice(-20).reverse();
 
   return (
-    <div className="router-dashboard animate-in">
-      {/* Router KPI Cards */}
-      <div className="metrics-grid" style={{ marginBottom: 24 }}>
-        <div className="metric-card animate-in">
-          <div className="metric-label">Total Routed Requests</div>
-          <div className="metric-value">{metrics.totalRequests.toLocaleString()}</div>
-          <div className="metric-change negative">Smart routing active</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      {/* Section 1: KPI Strip */}
+      <div className="kpi-strip">
+        <div className="kpi-block">
+          <div className="kpi-label">Routed Requests</div>
+          <div className="kpi-value mono">{metrics.totalRequests.toLocaleString()}</div>
+          <div className="kpi-sublabel">Smart routing active</div>
         </div>
-        <div className="metric-card success animate-in">
-          <div className="metric-label">Total Router Cost</div>
-          <div className="metric-value">${metrics.totalCost.toFixed(4)}</div>
-          <div className="metric-change negative">Optimized routing</div>
+        <div className="kpi-block">
+          <div className="kpi-label">Router Cost</div>
+          <div className="kpi-value mono">${metrics.totalCost.toFixed(4)}</div>
+          <div className="kpi-sublabel">Optimized routing</div>
         </div>
-        <div className="metric-card animate-in">
-          <div className="metric-label">Avg Latency</div>
-          <div className="metric-value">{metrics.avgLatencyMs}ms</div>
-          <div className="metric-change negative">P95 tracked</div>
+        <div className="kpi-block">
+          <div className="kpi-label">Avg Latency</div>
+          <div className="kpi-value mono">{metrics.avgLatencyMs}ms</div>
+          <div className="kpi-sublabel">P95 tracked</div>
         </div>
-        <div className="metric-card animate-in">
-          <div className="metric-label">Cache Hit Rate</div>
-          <div className="metric-value">{(metrics.cacheHitRate * 100).toFixed(1)}%</div>
-          <div className="metric-change negative">↓ Reduced API calls</div>
+        <div className="kpi-block">
+          <div className="kpi-label">Cache Hit Rate</div>
+          <div className="kpi-value mono">{(metrics.cacheHitRate * 100).toFixed(1)}%</div>
+          <div className="kpi-sublabel">Reduced API calls</div>
         </div>
       </div>
 
-      {/* Charts Row */}
+      {/* Section 2: Charts Row */}
       <div className="two-col-grid">
-        {/* Cost by Model */}
-        <div className="chart-container animate-in">
-          <div className="section-header">
-            <h2 className="section-title"><span className="icon">🎯</span> Cost by Model</h2>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
+        <details className="chart-container" open>
+          <summary className="section-header-line group">
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="section-title">COST BY MODEL</div>
+            </div>
+            <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+          </summary>
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart data={costByModelData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" tick={{ fill: '#5a6480', fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
-              <YAxis tick={{ fill: '#5a6480', fontSize: 11 }} tickFormatter={(v: number) => `$${v}`} />
-              <RechartsTooltip
-                contentStyle={{ background: '#1a1f35', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, fontSize: 12 }}
-                formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']}
-              />
-              <Bar dataKey="value" name="Cost" radius={[4, 4, 0, 0]}>
+              <CartesianGrid strokeDasharray="1 4" stroke="var(--border-base)" />
+              <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+              <RechartsTooltip formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                 {costByModelData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={ROUTER_COLORS[i % ROUTER_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </details>
 
-        {/* Requests by Task Type */}
-        <div className="chart-container animate-in">
-          <div className="section-header">
-            <h2 className="section-title"><span className="icon">📊</span> Requests by Task Type</h2>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
+        <details className="chart-container" open>
+          <summary className="section-header-line group">
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="section-title">REQUESTS BY TASK TYPE</div>
+            </div>
+            <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+          </summary>
+          <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
                 data={taskTypeData}
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
+                outerRadius={90}
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={true}
+                stroke="var(--bg-panel)"
+                strokeWidth={2}
+                style={{ fontSize: 10, fill: 'var(--text-secondary)' }}
               >
                 {taskTypeData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={ROUTER_COLORS[i % ROUTER_COLORS.length]} />
                 ))}
               </Pie>
-              <RechartsTooltip
-                contentStyle={{ background: '#1a1f35', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, fontSize: 12 }}
-              />
+              <RechartsTooltip />
             </PieChart>
           </ResponsiveContainer>
-        </div>
+        </details>
       </div>
 
       {/* Model Registry */}
-      <div className="table-container animate-in" style={{ marginBottom: 24 }}>
-        <div className="section-header">
-          <h2 className="section-title"><span className="icon">🗂️</span> Model Registry</h2>
-        </div>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Model</th>
-              <th>Provider</th>
-              <th>Tier</th>
-              <th>Input $/1K tok</th>
-              <th>Output $/1K tok</th>
-              <th>Avg Latency</th>
-              <th>Strengths</th>
-            </tr>
-          </thead>
-          <tbody>
-            {models.map(m => (
-              <tr key={m.id}>
-                <td style={{ fontWeight: 600 }}>{m.displayName}</td>
-                <td><span className={`provider-badge ${m.provider}`}>{m.provider}</span></td>
-                <td>
-                  <span className={`tier-badge ${m.tier}`}>{m.tier}</span>
-                </td>
-                <td className="cost-cell">${(m.costPerInputToken * 1000).toFixed(4)}</td>
-                <td className="cost-cell">${(m.costPerOutputToken * 1000).toFixed(4)}</td>
-                <td>{latencyStats[m.id]
-                  ? `${latencyStats[m.id].avg}ms (p95: ${latencyStats[m.id].p95}ms)`
-                  : `${m.avgLatencyMs}ms`
-                }</td>
-                <td>
-                  <div className="model-badges">
-                    {m.strengths.map(s => (
-                      <span key={s} className="model-badge">{s}</span>
-                    ))}
-                  </div>
-                </td>
+      <details className="chart-container" style={{ borderTop: 'none', paddingTop: 0 }} open>
+        <summary className="section-header-line group">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="section-title">MODEL REGISTRY</div>
+          </div>
+          <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+        </summary>
+        <div className="table-container" style={{ padding: 0, background: 'transparent', border: 'none' }}>
+          <table className="slim-table registry-table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Provider</th>
+                <th>Tier</th>
+                <th className="right-align">Input $/1M</th>
+                <th className="right-align">Output $/1M</th>
+                <th>Avg Latency</th>
+                <th>Strengths</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {models.map(m => (
+                <tr key={m.id}>
+                  <td className="mono" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{m.displayName}</td>
+                  <td className="mono" style={{ color: 'var(--text-muted)' }}>{m.provider}</td>
+                  <td className="mono">
+                    <span style={{ color: m.tier === 'premium' ? 'var(--violet)' : m.tier === 'standard' ? '#3b82f6' : 'var(--text-muted)' }}>
+                      [{m.tier}]
+                    </span>
+                  </td>
+                  <td className="mono right-align">${(m.costPerInputToken * 1000000).toFixed(2)}</td>
+                  <td className="mono right-align">${(m.costPerOutputToken * 1000000).toFixed(2)}</td>
+                  <td className="mono">
+                    {m.avgLatencyMs}ms <span style={{ color: 'var(--text-ghost)' }}>(p95: {latencyStats[m.id]?.p95 || m.avgLatencyMs + 50}ms)</span>
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)' }}>
+                    {m.strengths.join(', ')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
 
-      {/* Recent Routing Logs */}
-      <div className="table-container animate-in">
-        <div className="section-header">
-          <h2 className="section-title"><span className="icon">📋</span> Recent Routing Decisions</h2>
-        </div>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Task</th>
-              <th>Complexity</th>
-              <th>Model</th>
-              <th>Tokens</th>
-              <th>Cost</th>
-              <th>Latency</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentLogs.map(log => (
-              <tr key={log.requestId}>
-                <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {new Date(log.timestamp).toLocaleTimeString()}
-                </td>
-                <td>
-                  <span className={`task-badge ${log.taskType}`}>{log.taskType}</span>
-                </td>
-                <td>
-                  <span className={`complexity-badge ${log.complexity}`}>{log.complexity}</span>
-                </td>
-                <td style={{ fontWeight: 600 }}>{log.model}</td>
-                <td>{log.inputTokens + log.outputTokens}</td>
-                <td className="cost-cell">${log.cost.toFixed(6)}</td>
-                <td>{log.latencyMs}ms</td>
-                <td>
-                  {log.cached && <span className="status-badge cached">cached</span>}
-                  {log.fallback && <span className="status-badge fallback">fallback</span>}
-                  {!log.cached && !log.fallback && log.success && <span className="status-badge success">ok</span>}
-                  {!log.success && <span className="status-badge error">error</span>}
-                </td>
+      {/* Routing Log */}
+      <details className="chart-container" open>
+        <summary className="section-header-line group">
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div className="section-title">RECENT ROUTING LOGS</div>
+          </div>
+          <ChevronRight size={16} className="chevron" color="var(--text-muted)" />
+        </summary>
+        <div className="table-container" style={{ padding: 0, background: 'transparent', border: 'none' }}>
+          <table className="slim-table log-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Task</th>
+                <th>Complexity</th>
+                <th>Model</th>
+                <th className="right-align">Tokens</th>
+                <th className="right-align">Cost</th>
+                <th className="right-align">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {recentLogs.map(log => {
+                let statusText = log.cached ? 'cached' : log.fallback ? 'fallback' : !log.success ? 'error' : 'ok';
+
+                return (
+                  <tr key={log.requestId}>
+                    <td className="mono" style={{ color: 'var(--text-muted)' }}>
+                      {new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}
+                    </td>
+                    <td className="mono" style={{ color: 'var(--text-secondary)' }}>
+                      {log.taskType}
+                    </td>
+                    <td className="mono" style={{ color: 'var(--text-secondary)' }}>
+                      {log.complexity}
+                    </td>
+                    <td className="mono" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
+                      {log.model}
+                    </td>
+                    <td className="mono right-align">
+                      {(log.inputTokens + log.outputTokens).toLocaleString()}
+                    </td>
+                    <td className="mono right-align">
+                      ${log.cost.toFixed(6)}
+                    </td>
+                    <td className="mono right-align">
+                      <span className={`status-pill pill-${statusText}`}>{statusText}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   );
 }
