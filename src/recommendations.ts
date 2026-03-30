@@ -1,9 +1,24 @@
 import type { LLMEnhancerInput, EnhancedOutput, Insight } from './types';
 
-declare var process: any;
 
 function getCacheKey(insights: Insight[]) {
   return 'ts_ai_' + insights.map(i => i.rule + i.team).join('_');
+}
+
+function getFromCache(key: string): string | null {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveToCache(key: string, value: string): void {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, value);
+  } catch {
+    // Ignore in non-browser environments
+  }
 }
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
@@ -57,7 +72,7 @@ function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
 
 export async function generateAIRecommendations(input: LLMEnhancerInput): Promise<EnhancedOutput> {
   const cacheKey = getCacheKey(input.insights);
-  const cached = sessionStorage.getItem(cacheKey);
+  const cached = getFromCache(cacheKey);
   if (cached) {
     console.log('[TokenSense] Using cached AI response');
     return JSON.parse(cached);
@@ -165,7 +180,7 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
     })
   };
 
-  sessionStorage.setItem(cacheKey, JSON.stringify(result));
+  saveToCache(cacheKey, JSON.stringify(result));
   return result;
 }
 

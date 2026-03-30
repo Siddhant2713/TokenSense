@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DashboardCard } from './DashboardCard';
+import type { EnhancedRecommendation } from '../types';
 
 export function RecommendationsPanel({
   enhancedRecommendations,
   isLoading,
   error
 }: {
-  enhancedRecommendations?: any[],
+  enhancedRecommendations?: EnhancedRecommendation[],
   isLoading: boolean,
   error?: string | null
 }) {

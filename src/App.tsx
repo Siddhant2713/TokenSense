@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 import './App.css';
-import AskTokenSense from './AskTokenSense';
+import AskTokenSense from './components/AskTokenSense';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'llm' | 'cloud' | 'router'>('overview');
