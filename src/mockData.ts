@@ -1,4 +1,6 @@
-import type { Log, CloudResourceLog } from './types';
+import type { Log, CloudResourceLog, Model } from './types';
+import { calculateCost } from './aggregator';
+import { getProvider } from './utils/modelUtils';
 
 function generateTimestamp(daysAgo: number): string {
   const d = new Date();
@@ -11,27 +13,6 @@ function generateId(): string {
 }
 
 // ─── LLM Logs ──────────────────────────────────────────────────
-const PRICING: Record<string, { in: number; out: number }> = {
-  'gpt-4o': { in: 5.0, out: 15.0 },
-  'gpt-4o-mini': { in: 0.15, out: 0.60 },
-  'gpt-3.5-turbo': { in: 0.50, out: 1.50 },
-  'claude-3-opus': { in: 15.0, out: 75.0 },
-  'claude-3-haiku': { in: 0.25, out: 1.25 },
-  'gemini-1.5-pro': { in: 3.5, out: 10.5 },
-  'gemini-1.5-flash': { in: 0.35, out: 1.05 }
-};
-
-function getProvider(model: string): string {
-  if (model.includes('gpt')) return 'openai';
-  if (model.includes('claude')) return 'anthropic';
-  if (model.includes('gemini')) return 'google';
-  return 'unknown';
-}
-
-function calculateCost(model: string, input: number, output: number): number {
-  const rates = PRICING[model as keyof typeof PRICING] || { in: 0, out: 0 };
-  return (input / 1_000_000) * rates.in + (output / 1_000_000) * rates.out;
-}
 
 export function generateMockLogs(): Log[] {
   const logs: Log[] = [];
@@ -55,7 +36,7 @@ export function generateMockLogs(): Log[] {
         provider: getProvider(model),
         inputTokens: inputs,
         outputTokens: outputs,
-        cost: calculateCost(model, inputs, outputs),
+        cost: calculateCost(model as Model, inputs, outputs),
         latency: 1200 + Math.floor(Math.random() * 500),
         promptHash: generateId(),
         feature: 'invoice-classifier',
@@ -78,7 +59,7 @@ export function generateMockLogs(): Log[] {
         provider: getProvider(model),
         inputTokens: inputs,
         outputTokens: outputs,
-        cost: calculateCost(model, inputs, outputs),
+        cost: calculateCost(model as Model, inputs, outputs),
         latency: 2800 + Math.floor(Math.random() * 800),
         promptHash: generateId(),
         taskComplexity: 'moderate'
@@ -101,7 +82,7 @@ export function generateMockLogs(): Log[] {
         provider: getProvider(model),
         inputTokens: inputs,
         outputTokens: outputs,
-        cost: calculateCost(model, inputs, outputs),
+        cost: calculateCost(model as Model, inputs, outputs),
         latency: 1500 + Math.floor(Math.random() * 400),
         promptHash: i < 200 ? cacheWasteHash : generateId(),
         feature: 'code-reviewer',
@@ -125,7 +106,7 @@ export function generateMockLogs(): Log[] {
         provider: getProvider(model),
         inputTokens: inputs,
         outputTokens: outputs,
-        cost: calculateCost(model, inputs, outputs),
+        cost: calculateCost(model as Model, inputs, outputs),
         latency: 1100 + Math.floor(Math.random() * 300),
         promptHash: generateId(),
         feature: 'batch-job',
@@ -148,7 +129,7 @@ export function generateMockLogs(): Log[] {
         provider: getProvider(model),
         inputTokens: inputs,
         outputTokens: outputs,
-        cost: calculateCost(model, inputs, outputs),
+        cost: calculateCost(model as Model, inputs, outputs),
         latency: 400 + Math.floor(Math.random() * 200),
         promptHash: generateId(),
         feature: 'support-chatbot',
@@ -171,7 +152,7 @@ export function generateMockLogs(): Log[] {
         provider: getProvider(model),
         inputTokens: inputs,
         outputTokens: outputs,
-        cost: calculateCost(model, inputs, outputs),
+        cost: calculateCost(model as Model, inputs, outputs),
         latency: 3500 + Math.floor(Math.random() * 1000),
         promptHash: generateId(),
         feature: 'report-summary',

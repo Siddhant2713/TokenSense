@@ -1,7 +1,7 @@
 export type TaskType = 'code' | 'chat' | 'reasoning' | 'summarization' | 'extraction' | 'translation' | 'classification';
 export type Complexity = 'simple' | 'moderate' | 'complex';
 export type LatencySensitivity = 'low' | 'medium' | 'high';
-export type Provider = 'openai' | 'anthropic' | 'google' | 'mistral';
+export type Provider = 'openai' | 'anthropic' | 'google';
 
 export interface RoutingRequest {
   prompt: string;

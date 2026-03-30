@@ -1,8 +1,12 @@
-import type { LLMEnhancerInput, EnhancedOutput } from './types';
+import type { LLMEnhancerInput, EnhancedOutput, Insight } from './types';
 
 declare var process: any;
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+function getCacheKey(insights: Insight[]) {
+  return 'ts_ai_' + insights.map(i => i.rule + i.team).join('_');
+}
+
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
 
 function getApiKey(): string | undefined {
   if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_GEMINI_API_KEY) {
@@ -15,7 +19,7 @@ function getApiKey(): string | undefined {
 }
 
 function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
-  const llmCount = input.insights.filter((i: any) => i.category === 'llm' || !i.category).length || input.insights.length;
+  const llmCount = input.insights.filter(i => i.category === 'llm' || !i.category).length || input.insights.length;
   const cloudCount = input.insights.length - llmCount;
   
   const recommendations = input.insights.map((insight) => {
@@ -29,13 +33,14 @@ function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
     return {
       recommendation: {
         team: insight.team || "Unknown Team",
+        rule: insight.rule,
         issue: insight.rule || "Efficiency Warning",
         action: insight.suggestedFix || "Investigate the alert and optimize.",
         monthlySaving: saving,
         effort: "Medium" as "Medium" | "High" | "Low",
         confidence: "High" as "Medium" | "High" | "Low",
         evidence: insight.evidence || "Flagged by Rules Engine",
-        category: (insight as any).category || "llm"
+        category: insight.category || "llm"
       },
       explanation: insight.evidence || "Deterministically flagged anomaly in metric volumes.",
       whyItHappened: insight.suggestedFix || "Consider reviewing your resource pipelines."
@@ -51,6 +56,13 @@ function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
 }
 
 export async function generateAIRecommendations(input: LLMEnhancerInput): Promise<EnhancedOutput> {
+  const cacheKey = getCacheKey(input.insights);
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    console.log('[TokenSense] Using cached AI response');
+    return JSON.parse(cached);
+  }
+
   const apiKey = getApiKey();
 
   if (!apiKey) {
@@ -62,7 +74,7 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
     You are TokenSense AI, an LLM Gateway router and cloud cost-optimization expert.
     Analyze the following monitoring alerts (insights) and their associated team metrics context.
     
-    Insights: ${JSON.stringify(input.insights, null, 2)}
+    Insights: ${JSON.stringify(input.insights.map((ins, i) => ({ ...ins, _index: i })), null, 2)}
     Metrics: ${JSON.stringify(input.metrics, null, 2)}
     Cloud Resource Context: ${JSON.stringify(input.cloudMetrics, null, 2)}
 
@@ -72,6 +84,8 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
       "executiveSummary": "...",
       "recommendations": [
         {
+          "_insightIndex": 0,
+          "rule": "match rule from insight",
           "team": "match team from insight",
           "issue": "short title of issue",
           "action": "specific instruction to fix",
@@ -94,8 +108,7 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-            temperature: 0.1,
-            responseMimeType: 'application/json'
+            temperature: 0.1
         }
       })
     });
@@ -128,22 +141,31 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
     return buildFallbackOutput(input);
   }
 
-  return {
+  const result = {
     executiveSummary: parsed.executiveSummary,
-    recommendations: parsed.recommendations.map((aiRec: any, i: number) => ({
-      recommendation: {
-        team: aiRec.team,
-        issue: aiRec.issue,
-        action: aiRec.action,
-        monthlySaving: aiRec.monthlySaving,
-        effort: aiRec.effort,
-        confidence: aiRec.confidence,
-        evidence: input.insights[i]?.evidence || 'Flagged by monitoring system',
-        category: aiRec.category
-      },
-      explanation: aiRec.explanation,
-      whyItHappened: aiRec.whyItHappened
-    }))
+    recommendations: parsed.recommendations.map((aiRec: any) => {
+      const matchedInsight = input.insights[aiRec._insightIndex] 
+        ?? input.insights.find(ins => ins.team === aiRec.team && ins.rule === aiRec.rule)
+        ?? input.insights[0];
+      return {
+        recommendation: {
+          team: aiRec.team,
+          rule: matchedInsight?.rule,
+          issue: aiRec.issue,
+          action: aiRec.action,
+          monthlySaving: aiRec.monthlySaving,
+          effort: aiRec.effort,
+          confidence: aiRec.confidence,
+          evidence: matchedInsight?.evidence || 'Flagged by monitoring system',
+          category: aiRec.category
+        },
+        explanation: aiRec.explanation,
+        whyItHappened: aiRec.whyItHappened
+      };
+    })
   };
+
+  sessionStorage.setItem(cacheKey, JSON.stringify(result));
+  return result;
 }
 

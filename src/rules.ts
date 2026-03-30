@@ -1,28 +1,33 @@
 import type { Log, TeamMetrics, Insight, CloudResourceMetrics } from './types';
 import { MODEL_DOWNGRADE_MAP } from './aggregator';
+import { RULE_THRESHOLDS } from './config/ruleThresholds';
 
 // ─── LLM Rules ──────────────────────────────────────────────────
 
 export function detectModelMisuse(metrics: TeamMetrics[]): Insight[] {
   const insights: Insight[] = [];
   for (const m of metrics) {
-    if ((m.modelsUsed['gpt-4o'] ?? 0) > 0 && m.averageOutputTokens < 100) {
+    const gptAvgOutput = m.modelOutputAverages?.['gpt-4o'] ?? m.averageOutputTokens;
+    if ((m.modelsUsed['gpt-4o'] ?? 0) > 0 && gptAvgOutput < RULE_THRESHOLDS.MODEL_MISUSE.maxOutputTokensForSimpleTask) {
       const downgrade = MODEL_DOWNGRADE_MAP['gpt-4o'] ?? 'gpt-4o-mini';
       insights.push({
         team: m.team,
         rule: 'MODEL_MISUSE',
         severity: 'High',
-        evidence: `${m.modelsUsed['gpt-4o']} calls to gpt-4o with avg output of only ${Math.round(m.averageOutputTokens)} tokens — task is too simple for this model.`,
+        category: 'llm',
+        evidence: `${m.modelsUsed['gpt-4o']} calls to gpt-4o with avg output of only ${Math.round(gptAvgOutput)} tokens — task is too simple for this model.`,
         suggestedFix: `Switch to ${downgrade} for this workload.`
       });
     }
-    if ((m.modelsUsed['claude-3-opus'] ?? 0) > 0 && m.averageOutputTokens < 100) {
+    const claudeAvgOutput = m.modelOutputAverages?.['claude-3-opus'] ?? m.averageOutputTokens;
+    if ((m.modelsUsed['claude-3-opus'] ?? 0) > 0 && claudeAvgOutput < RULE_THRESHOLDS.MODEL_MISUSE.maxOutputTokensForSimpleTask) {
       const downgrade = MODEL_DOWNGRADE_MAP['claude-3-opus'] ?? 'claude-3-haiku';
       insights.push({
         team: m.team,
         rule: 'MODEL_DOWNGRADE',
         severity: 'High',
-        evidence: `${m.modelsUsed['claude-3-opus']} calls to claude-3-opus with avg output of only ${Math.round(m.averageOutputTokens)} tokens.`,
+        category: 'llm',
+        evidence: `${m.modelsUsed['claude-3-opus']} calls to claude-3-opus with avg output of only ${Math.round(claudeAvgOutput)} tokens.`,
         suggestedFix: `Switch to ${downgrade} for ~97% cost reduction.`
       });
     }
@@ -33,11 +38,12 @@ export function detectModelMisuse(metrics: TeamMetrics[]): Insight[] {
 export function detectLongPrompts(metrics: TeamMetrics[]): Insight[] {
   const insights: Insight[] = [];
   for (const m of metrics) {
-    if (m.averageInputTokens > 2000) {
+    if (m.averageInputTokens > RULE_THRESHOLDS.LONG_PROMPTS.avgInputTokensWarning) {
       insights.push({
         team: m.team,
         rule: 'LONG_PROMPTS',
         severity: 'High',
+        category: 'llm',
         evidence: `Average input prompt length is ${Math.round(m.averageInputTokens)} tokens.`,
         suggestedFix: 'Summarize context before sending or use RAG to reduce prompt size by 50%.'
       });
@@ -65,11 +71,12 @@ export function detectSpike(logs: Log[]): Insight[] {
     const sum = counts.reduce((a, b) => a + b, 0);
     const avgWithoutMax = (sum - maxCount) / (counts.length - 1);
 
-    if (avgWithoutMax > 0 && maxCount > avgWithoutMax * 3) {
+    if (avgWithoutMax > 0 && maxCount > avgWithoutMax * RULE_THRESHOLDS.SPIKE.multiplierVsRollingAverage) {
       insights.push({
         team,
         rule: 'SPIKE',
         severity: 'High',
+        category: 'llm',
         evidence: `Usage spiked to ${maxCount} calls on peak day, over 3x the normal daily average of ${Math.round(avgWithoutMax)} calls.`,
         suggestedFix: 'Investigate potential looping scripts, batch job errors, or runaway retry logic.'
       });
@@ -94,11 +101,12 @@ export function detectCacheWaste(logs: Log[]): Insight[] {
       if (count > maxRepeats) maxRepeats = count;
     }
 
-    if (maxRepeats >= 50) {
+    if (maxRepeats >= RULE_THRESHOLDS.CACHE_WASTE.minRepeatCountToFlag) {
       insights.push({
         team,
         rule: 'CACHE_WASTE',
         severity: 'High',
+        category: 'llm',
         evidence: `Found identical prompt hash sent ${maxRepeats} times.`,
         suggestedFix: 'Implement a Redis/in-memory cache wrapper for repeated identical prompts.'
       });
@@ -112,12 +120,13 @@ export function detectCacheWaste(logs: Log[]): Insight[] {
 export function detectRAMOverProvision(cloudMetrics: CloudResourceMetrics[]): Insight[] {
   const insights: Insight[] = [];
   for (const m of cloudMetrics) {
-    if (m.avgAllocatedRAM_MB > 0 && m.ramUtilization < 40) {
-      const suggestedRAM = Math.max(32, Math.ceil(m.avgUsedRAM_MB * 1.5));
+    if (m.avgAllocatedRAM_MB > 0 && m.ramUtilization < RULE_THRESHOLDS.RAM_OVER_PROVISION.utilizationWarnPercent) {
+      const suggestedRAM = Math.max(RULE_THRESHOLDS.RAM_OVER_PROVISION.minSuggestedRAM_MB, Math.ceil(m.avgUsedRAM_MB * RULE_THRESHOLDS.RAM_OVER_PROVISION.safetyBufferMultiplier));
       insights.push({
         team: m.team,
         rule: 'RAM_OVER_PROVISION',
-        severity: m.ramUtilization < 20 ? 'High' : 'Medium',
+        severity: m.ramUtilization < RULE_THRESHOLDS.RAM_OVER_PROVISION.utilizationDangerPercent ? 'High' : 'Medium',
+        category: 'cloud',
         evidence: `${m.provider} ${m.service} "${m.resourceName}" is allocating ${m.avgAllocatedRAM_MB}MB RAM but only using ${m.avgUsedRAM_MB}MB (${m.ramUtilization}% utilization). Wasted cost: $${m.wastedCost.toFixed(2)}.`,
         suggestedFix: `Downgrade allocation to ${suggestedRAM}MB to save ~$${m.wastedCost.toFixed(2)}.`
       });

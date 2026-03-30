@@ -1,5 +1,15 @@
 // ─── LLM Models ───────────────────────────────────────────────
-export type Model = 'gpt-4o' | 'gpt-4o-mini' | 'gpt-3.5-turbo' | 'claude-3-opus' | 'claude-3-haiku' | 'gemini-1.5-pro' | 'gemini-1.5-flash';
+// NOTE: These are the model IDs used in LLM monitoring telemetry logs.
+// The Smart Router (src/router/) maintains its own separate model registry.
+export type Model = 
+  | 'gpt-4o' 
+  | 'gpt-4o-mini' 
+  | 'gpt-3.5-turbo' 
+  | 'claude-3-opus'     // v3 (legacy monitoring)
+  | 'claude-3-haiku'    // v3 (legacy monitoring)
+  | 'claude-sonnet-4-20250514'  // v4 (add for future telemetry)
+  | 'gemini-1.5-pro' 
+  | 'gemini-1.5-flash';
 
 // ─── Cloud Resource Types ─────────────────────────────────────
 export type CloudProvider = 'cloudflare' | 'aws' | 'gcp';
@@ -50,6 +60,7 @@ export interface TeamMetrics {
   modelsUsed: Partial<Record<Model, number>>;
   providersUsed: Partial<Record<string, number>>;
   averageLatency: number;
+  modelOutputAverages: Partial<Record<Model, number>>;
 }
 
 export interface CloudResourceMetrics {
@@ -75,11 +86,13 @@ export interface Insight {
   severity: 'High' | 'Medium' | 'Low';
   evidence: string;
   suggestedFix?: string;
+  category: 'llm' | 'cloud';
 }
 
 // ─── Recommendations ─────────────────────────────────────────
 export interface Recommendation {
   team: string;
+  rule?: string;
   issue: string;
   action: string;
   monthlySaving: number;

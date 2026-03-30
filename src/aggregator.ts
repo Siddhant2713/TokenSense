@@ -7,6 +7,7 @@ export const PRICING: Record<Model, { input: number; output: number }> = {
   'gpt-3.5-turbo':   { input: 0.0000005,  output: 0.0000015 },
   'claude-3-opus':   { input: 0.000015,   output: 0.000075  },
   'claude-3-haiku':  { input: 0.00000025, output: 0.00000125},
+  'claude-sonnet-4-20250514': { input: 0.000003, output: 0.000015 },
   'gemini-1.5-pro':  { input: 0.0000035,  output: 0.0000105 },
   'gemini-1.5-flash':{ input: 0.000000075,output: 0.0000003 },
 };
@@ -28,6 +29,7 @@ export function calculateCost(model: Model, inputTokens: number, outputTokens: n
 export function aggregateLogs(logs: Log[]): TeamMetrics[] {
   const map = new Map<string, TeamMetrics>();
   const teamWeeklyCosts = new Map<string, { thisWeek: number; lastWeek: number; totalLatency: number }>();
+  const modelOutputSums = new Map<string, Map<Model, { sum: number; count: number }>>();
 
   const now = Date.now();
   const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -46,7 +48,8 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
         costVsLastWeek: 0,
         modelsUsed: {},
         providersUsed: {},
-        averageLatency: 0
+        averageLatency: 0,
+        modelOutputAverages: {}
       });
       teamWeeklyCosts.set(log.team, { thisWeek: 0, lastWeek: 0, totalLatency: 0 });
     }
@@ -65,6 +68,11 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
     m.cost += c;
     cw.totalLatency += log.latency;
 
+    if (!modelOutputSums.has(log.team)) modelOutputSums.set(log.team, new Map());
+    const modelMap = modelOutputSums.get(log.team)!;
+    const current = modelMap.get(log.model) ?? { sum: 0, count: 0 };
+    modelMap.set(log.model, { sum: current.sum + log.outputTokens, count: current.count + 1 });
+
     const logTime = new Date(log.timestamp).getTime();
     if (now - logTime <= ONE_WEEK_MS) {
       cw.thisWeek += c;
@@ -79,6 +87,14 @@ export function aggregateLogs(logs: Log[]): TeamMetrics[] {
       m.averageOutputTokens = m.totalOutputTokens / m.totalCalls;
       const cw = teamWeeklyCosts.get(team)!;
       m.averageLatency = Math.round(cw.totalLatency / m.totalCalls);
+
+      m.modelOutputAverages = {};
+      const teamOutputSums = modelOutputSums.get(team);
+      if (teamOutputSums) {
+        for (const [model, data] of teamOutputSums.entries()) {
+          m.modelOutputAverages[model] = data.sum / data.count;
+        }
+      }
     }
     const cw = teamWeeklyCosts.get(team)!;
     if (cw.lastWeek > 0) {

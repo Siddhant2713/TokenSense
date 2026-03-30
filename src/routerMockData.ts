@@ -1,6 +1,6 @@
 import { ModelRegistry } from './router/modelRegistry';
 import type { RequestLog, AggregatedMetrics, ModelConfig } from './router/types';
-import type { TaskType, Complexity, Provider } from './router/types';
+import type { TaskType, Complexity } from './router/types';
 
 export interface RouterMockData {
   metrics: AggregatedMetrics;
@@ -12,7 +12,6 @@ export interface RouterMockData {
 const TASK_TYPES: TaskType[] = ['code', 'chat', 'reasoning', 'summarization', 'extraction', 'classification'];
 const COMPLEXITIES: Complexity[] = ['simple', 'moderate', 'complex'];
 
-const MODEL_IDS = ['gpt-4o', 'gpt-4o-mini', 'claude-sonnet-4-20250514', 'claude-haiku-3-5', 'gemini-2.0-flash', 'gemini-2.5-pro'];
 
 function randomChoice<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];

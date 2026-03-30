@@ -4,12 +4,9 @@ import { generateMockLogs, generateMockCloudLogs } from './mockData.js';
 import { aggregateLogs, aggregateCloudLogs } from './aggregator.js';
 import { runAllRules } from './rules.js';
 import { generateAIRecommendations } from './recommendations.js';
-// @ts-ignore
+import type { EnhancedRecommendation, EnhancedOutput } from './types.js';
 import fs from 'node:fs';
-// @ts-ignore
 import path from 'node:path';
-
-declare var process: any;
 
 // Manual .env loader for CLI since we avoid external dependencies
 function loadEnv() {
@@ -67,7 +64,7 @@ async function main() {
   const teamMetrics = aggregateLogs(llmLogs);
   const cloudMetrics = aggregateCloudLogs(cloudLogs);
   const insights = runAllRules(llmLogs, teamMetrics, cloudMetrics);
-  let enhanced: any = { executiveSummary: '', recommendations: [] };
+  let enhanced: EnhancedOutput = { executiveSummary: '', recommendations: [] };
   try {
     enhanced = await generateAIRecommendations({
       insights,
@@ -79,7 +76,7 @@ async function main() {
   }
 
   const recommendations = enhanced.recommendations;
-  const totalSavings = recommendations.reduce((s: number, r: any) => s + (r.recommendation.monthlySaving || 0), 0);
+  const totalSavings = recommendations.reduce((s: number, r: EnhancedRecommendation) => s + (r.recommendation.monthlySaving || 0), 0);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -102,10 +99,10 @@ async function main() {
   const totalLLMCost = teamMetrics.reduce((s, m) => s + m.cost, 0);
   const totalCloudCost = cloudMetrics.reduce((s, m) => s + m.totalCost, 0);
 
-  const llmRecs = recommendations.filter((r: any) => r.recommendation.category === 'llm');
-  const cloudRecs = recommendations.filter((r: any) => r.recommendation.category === 'cloud');
-  const llmSavings = llmRecs.reduce((s: number, r: any) => s + (r.recommendation.monthlySaving || 0), 0);
-  const cloudSavings = cloudRecs.reduce((s: number, r: any) => s + (r.recommendation.monthlySaving || 0), 0);
+  const llmRecs = recommendations.filter((r: EnhancedRecommendation) => r.recommendation.category === 'llm');
+  const cloudRecs = recommendations.filter((r: EnhancedRecommendation) => r.recommendation.category === 'cloud');
+  const llmSavings = llmRecs.reduce((s: number, r: EnhancedRecommendation) => s + (r.recommendation.monthlySaving || 0), 0);
+  const cloudSavings = cloudRecs.reduce((s: number, r: EnhancedRecommendation) => s + (r.recommendation.monthlySaving || 0), 0);
 
   console.log(`  ${c.cyan}●${c.reset} Analyzed ${c.bold}${llmLogs.length.toLocaleString()}${c.reset} LLM calls and ${c.bold}${cloudLogs.length.toLocaleString()}${c.reset} cloud resource entries`);
   console.log(`  ${c.cyan}●${c.reset} Total LLM Spend:   ${c.bold}$${totalLLMCost.toFixed(2)}${c.reset}`);
@@ -176,15 +173,16 @@ async function main() {
   console.log(`${c.dim}${'─'.repeat(62)}${c.reset}`);
 
   // Pair insights with recommendations
-  const sortedRecs = [...recommendations].sort((a: any, b: any) => b.recommendation.monthlySaving - a.recommendation.monthlySaving);
+  const sortedRecs: EnhancedRecommendation[] = [...recommendations].sort((a, b) => b.recommendation.monthlySaving - a.recommendation.monthlySaving);
   for (const enhancedRec of sortedRecs) {
     const rec = enhancedRec.recommendation;
+    const sevTag = `[${rec.confidence.toUpperCase()}]`;
     const severityColor = c.red;
     const categoryIcon = rec.category === 'llm' ? '🤖' : '☁️';
     const categoryLabel = rec.category === 'llm' ? 'LLM' : 'CLOUD';
 
     console.log('');
-    console.log(`  ${severityColor}[HIGH]${c.reset}  ${c.bold}${rec.team}${c.reset} — ${rec.issue}  ${c.dim}[${categoryLabel}]${c.reset} ${categoryIcon}`);
+    console.log(`  ${severityColor}${sevTag}${c.reset}  ${c.bold}${rec.team}${c.reset} — ${rec.issue}  ${c.dim}[${categoryLabel}]${c.reset} ${categoryIcon}`);
     console.log(`  ${c.cyan}💡   Expected Action: ${c.white}${rec.action}${c.reset}`);
     console.log(`  ${c.magenta}💡   AI Analysis:     ${c.white}${enhancedRec.explanation}${c.reset}`);
     console.log(`  ${c.magenta}❓   Why it happened: ${c.dim}${enhancedRec.whyItHappened}${c.reset}`);

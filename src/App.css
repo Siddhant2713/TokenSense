@@ -68,6 +68,25 @@ body {
   margin-bottom: 40px;
 }
 
+.brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.brand-text span {
+  color: var(--accent);
+}
+
+.brand-text.sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
 .brand-line {
   height: 1px;
   background: var(--border-base);
@@ -311,8 +330,8 @@ body {
 
 /* Two Column Grid */
 .two-col-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 32px;
 }
 
@@ -828,7 +847,7 @@ button,
     width: 20px;
   }
 
-  .brand-sub {
+  .brand-text.sub {
     display: none;
   }
 
@@ -841,38 +860,7 @@ button,
   }
 }
 
-/* -- UI Redesign Feedback Overrides -- */
-
-/* 1. Restore Sidebar & Adjust Canvas */
-.sidebar {
-  display: flex !important;
-}
-
-.main-content {
-  margin-left: 250px !important;
-  max-width: none;
-  margin: 0;
-  padding: 32px;
-}
-
-.topbar {
-  left: 250px !important;
-  padding: 0 32px !important;
-}
-
-/* 2. Top-bar custom Dropdown (hidden) */
-.nav-dropdown {
-  display: none !important;
-}
-
-/* 3. Stack Panels & Accordion Layout */
-.two-col-grid {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 32px !important;
-}
-
-/* Global Hover Effects */
+/* Globals & Base styles incorporated from overrides */
 .kpi-block, .exec-summary-line, .cloud-card, .chart-container {
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -890,17 +878,11 @@ button,
   transform: scale(1.15) rotate(-2deg);
 }
 
-/* Dashboard Accordion (Details/Summary) Styling */
-.chart-container {
-  display: block;
-  /* reset override if needed */
-}
-
 .chart-container>summary {
   list-style: none;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   transition: background 0.2s ease, transform 0.2s ease;
   margin-left: -8px;
   margin-right: -8px;
@@ -910,27 +892,7 @@ button,
   background: var(--bg-hover);
 }
 
-.chevron {
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
 .chart-container[open]>summary .chevron {
-  transform: rotate(90deg);
-}
-
-.chart-container>summary .section-header-line {
-  position: relative;
-}
-
-.chart-container>summary .section-title::before {
-  content: '▸';
-  display: inline-block;
-  margin-right: 8px;
-  font-size: 14px;
-  transition: transform 0.2s ease;
-}
-
-.chart-container[open]>summary .section-title::before {
   transform: rotate(90deg);
 }
 
@@ -938,90 +900,37 @@ button,
   animation: fade-up 0.3s ease;
 }
 
-/* 4. Global Typographical Upscale (Bigger Text) */
-.section-title {
-  font-size: 13px !important;
-}
+.section-title { font-size: 13px; }
+.kpi-block .kpi-label { font-size: 12px; }
+.kpi-block .kpi-value { font-size: 38px; }
+.exec-text { font-size: 15px; }
 
-.kpi-block .kpi-label {
-  font-size: 12px !important;
-}
-
-.kpi-block .kpi-value {
-  font-size: 38px !important;
-}
-
-.exec-text {
-  font-size: 15px !important;
-}
-
-/* Issue Matrix upscale */
 .issue-row {
-  font-size: 14px !important;
-  padding: 16px 0 !important;
+  font-size: 14px;
+  padding: 16px 0;
 }
-
-.issue-team {
-  font-size: 13px !important;
-}
-
+.issue-team { font-size: 13px; }
 .issue-evidence {
-  font-size: 13px !important;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
-/* Rec Panel upscale */
-.rec-team {
-  font-size: 15px !important;
-}
-
-.rec-saving {
-  font-size: 15px !important;
-}
-
-.rec-issue-title {
-  font-size: 13px !important;
-}
-
-.rec-effort {
-  font-size: 11px !important;
-}
+.rec-team { font-size: 15px; }
+.rec-saving { font-size: 15px; }
+.rec-issue-title { font-size: 13px; }
+.rec-effort { font-size: 11px; }
 
 .rec-text-block {
-  font-size: 14px !important;
+  font-size: 14px;
   line-height: 1.6;
 }
-
 .rec-text-block strong {
-  font-size: 12px !important;
+  font-size: 12px;
   margin-bottom: 6px;
 }
 
-/* Table base upscales */
-.slim-table th {
-  font-size: 12px !important;
-}
-
-.slim-table td {
-  font-size: 13px !important;
-}
-
-.data-table th {
-  font-size: 12px !important;
-}
-
-.data-table td {
-  font-size: 13px !important;
-}
-
-.cc-title {
-  font-size: 15px !important;
-}
-
-.cc-team {
-  font-size: 14px !important;
-}
-
-.cc-cost {
-  font-size: 14px !important;
-}
+.slim-table th { font-size: 12px; }
+.slim-table td { font-size: 13px; }
+.cc-title { font-size: 15px; }
+.cc-team { font-size: 14px; }
+.cc-cost { font-size: 14px; }
