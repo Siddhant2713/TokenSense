@@ -1,6 +1,6 @@
 import { ModelRegistry } from './router/modelRegistry';
-import type { RequestLog, AggregatedMetrics, ModelConfig } from './router/types';
-import type { TaskType, Complexity } from './router/types';
+import type { RequestLog, AggregatedMetrics, ModelConfig } from '@tokensense/types';
+import type { TaskType, Complexity } from '@tokensense/types';
 
 export interface RouterMockData {
   metrics: AggregatedMetrics;

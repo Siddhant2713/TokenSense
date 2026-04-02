@@ -1,4 +1,4 @@
-import type { Provider, ProviderResponse, TokenUsage } from './types';
+import type { Provider, ProviderResponse, TokenUsage } from '@tokensense/types';
 
 export interface ProviderClient {
   provider: Provider;

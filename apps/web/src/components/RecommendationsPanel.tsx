@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DashboardCard } from './DashboardCard';
-import type { EnhancedRecommendation } from '../types';
+import type { EnhancedRecommendation } from '@tokensense/types';
 
 export function RecommendationsPanel({
   enhancedRecommendations,

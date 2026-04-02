@@ -1,4 +1,4 @@
-import type { TaskType, Complexity, LatencySensitivity, ModelConfig, UserConfig, Provider } from './types';
+import type { TaskType, Complexity, LatencySensitivity, ModelConfig, UserConfig, Provider } from '@tokensense/types';
 import { ModelRegistry } from './modelRegistry';
 
 export interface RoutingDecision {

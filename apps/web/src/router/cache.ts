@@ -1,4 +1,4 @@
-import type { ProviderResponse } from './types';
+import type { ProviderResponse } from '@tokensense/types';
 
 interface CacheEntry {
   response: ProviderResponse;

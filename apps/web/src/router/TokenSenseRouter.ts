@@ -1,7 +1,7 @@
 import type {
   RoutingRequest, RoutingResponse, RequestLog, UserConfig,
   Provider, TaskType, Complexity, LatencySensitivity, AggregatedMetrics, ModelConfig,
-} from './types';
+} from '@tokensense/types';
 import { ModelRegistry } from './modelRegistry';
 import { RoutingEngine } from './routingEngine';
 import { ProviderManager, type CompletionParams } from './providers';

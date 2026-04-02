@@ -1,4 +1,4 @@
-import type { RequestLog } from './types';
+import type { RequestLog } from '@tokensense/types';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 

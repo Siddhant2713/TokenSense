@@ -1,4 +1,4 @@
-import type { TaskType } from './types';
+import type { TaskType } from '@tokensense/types';
 
 const TASK_PATTERNS: { type: TaskType; patterns: RegExp[] }[] = [
   {

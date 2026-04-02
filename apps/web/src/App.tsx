@@ -6,10 +6,10 @@ import { TeamMetricsTable } from './components/TeamMetricsTable';
 import { CloudMetricsTable } from './components/CloudMetricsTable';
 import { RouterDashboard } from './components/RouterDashboard';
 import { generateMockLogs, generateMockCloudLogs } from './mockData';
-import { aggregateLogs, aggregateCloudLogs, computeDailyCosts } from './aggregator';
-import { runAllRules } from './rules';
+import { aggregateLogs, aggregateCloudLogs, computeDailyCosts } from '@tokensense/rules-engine';
+import { runAllRules } from '@tokensense/rules-engine';
 import { generateAIRecommendations } from './recommendations';
-import type { EnhancedOutput } from './types';
+import type { EnhancedOutput } from '@tokensense/types';
 
 import { generateRouterMockData } from './routerMockData';
 import {

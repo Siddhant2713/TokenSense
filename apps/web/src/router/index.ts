@@ -17,4 +17,4 @@ export type {
   RoutingRequest, RoutingResponse, TokenUsage, ModelConfig, ProviderResponse,
   RequestLog, UserConfig, AggregatedMetrics, TaskType, Complexity,
   LatencySensitivity, Provider,
-} from './types';
+} from '@tokensense/types';

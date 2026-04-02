@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Insight } from '../types';
+import type { Insight } from '@tokensense/types';
 import { DashboardCard } from './DashboardCard';
 
 export function InsightsPanel({ insights }: { insights: Insight[] }) {

@@ -1,4 +1,4 @@
-import type { TaskType } from './types';
+import type { TaskType } from '@tokensense/types';
 
 export const SYSTEM_PROMPT_TEMPLATE = `You are a helpful AI assistant. Follow these rules:
 - Be concise and direct

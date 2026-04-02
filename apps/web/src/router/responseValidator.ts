@@ -1,4 +1,4 @@
-import type { TaskType, ProviderResponse } from './types';
+import type { TaskType, ProviderResponse } from '@tokensense/types';
 
 export interface ValidationResult {
   valid: boolean;

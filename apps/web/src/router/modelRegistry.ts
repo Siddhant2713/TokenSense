@@ -1,4 +1,4 @@
-import type { ModelConfig, Provider, TaskType } from './types';
+import type { ModelConfig, Provider, TaskType } from '@tokensense/types';
 
 const MODELS: ModelConfig[] = [
   {

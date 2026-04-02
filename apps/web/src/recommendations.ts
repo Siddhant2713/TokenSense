@@ -1,38 +1,38 @@
-import type { LLMEnhancerInput, EnhancedOutput, Insight } from './types';
-
+import type { LLMEnhancerInput, EnhancedOutput, Insight } from '@tokensense/types';
 
 function getCacheKey(insights: Insight[]) {
   return 'ts_ai_' + insights.map(i => i.rule + i.team).join('_');
 }
 
-function getFromCache(key: string): string | null {
+export async function generateAIRecommendations(input: LLMEnhancerInput): Promise<EnhancedOutput> {
+  const cacheKey = getCacheKey(input.insights);
   try {
-    return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
-  } catch {
-    return null;
-  }
-}
+    const cached = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(cacheKey) : null;
+    if (cached) return JSON.parse(cached);
+  } catch {}
 
-function saveToCache(key: string, value: string): void {
   try {
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, value);
-  } catch {
-    // Ignore in non-browser environments
+    const res = await fetch('http://localhost:3001/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    });
+    
+    if (!res.ok) throw new Error('Backend responded with failure.');
+    
+    const data = await res.json();
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(cacheKey, JSON.stringify(data));
+    } catch {}
+    
+    return data;
+  } catch (err) {
+    console.error('[TokenSense] Backend unavailable. Falling back exclusively to robust deterministic generator offline.', err);
+    return buildFallbackOutput(input);
   }
 }
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
-
-function getApiKey(): string | undefined {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_GEMINI_API_KEY) {
-    return (import.meta as any).env.VITE_GEMINI_API_KEY;
-  }
-  if (typeof process !== 'undefined' && process.env && process.env.VITE_GEMINI_API_KEY) {
-    return process.env.VITE_GEMINI_API_KEY;
-  }
-  return undefined;
-}
-
+// Strictly offline deterministic fallback for zero-breakage demo
 function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
   const llmCount = input.insights.filter(i => i.category === 'llm' || !i.category).length || input.insights.length;
   const cloudCount = input.insights.length - llmCount;
@@ -69,118 +69,3 @@ function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
     recommendations
   };
 }
-
-export async function generateAIRecommendations(input: LLMEnhancerInput): Promise<EnhancedOutput> {
-  const cacheKey = getCacheKey(input.insights);
-  const cached = getFromCache(cacheKey);
-  if (cached) {
-    console.log('[TokenSense] Using cached AI response');
-    return JSON.parse(cached);
-  }
-
-  const apiKey = getApiKey();
-
-  if (!apiKey) {
-    console.warn('[TokenSense] VITE_GEMINI_API_KEY is missing. Falling back to deterministic output.');
-    return buildFallbackOutput(input);
-  }
-
-  const prompt = `
-    You are TokenSense AI, an LLM Gateway router and cloud cost-optimization expert.
-    Analyze the following monitoring alerts (insights) and their associated team metrics context.
-    
-    Insights: ${JSON.stringify(input.insights.map((ins, i) => ({ ...ins, _index: i })), null, 2)}
-    Metrics: ${JSON.stringify(input.metrics, null, 2)}
-    Cloud Resource Context: ${JSON.stringify(input.cloudMetrics, null, 2)}
-
-    RESPONSE FORMAT:
-    Output ONLY valid JSON. Do not wrap in markdown code blocks. Do not add any explanation before or after the JSON.
-    {
-      "executiveSummary": "...",
-      "recommendations": [
-        {
-          "_insightIndex": 0,
-          "rule": "match rule from insight",
-          "team": "match team from insight",
-          "issue": "short title of issue",
-          "action": "specific instruction to fix",
-          "monthlySaving": 123.45,
-          "effort": "Low|Medium|High",
-          "confidence": "Low|Medium|High",
-          "category": "llm|cloud",
-          "explanation": "detailed explanation referencing data",
-          "whyItHappened": "root cause analysis"
-        }
-      ]
-    }
-  `;
-
-  let response;
-  try {
-    response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            temperature: 0.1
-        }
-      })
-    });
-  } catch (netErr: any) {
-    console.error('[TokenSense] Network error fetching Gemini:', netErr);
-    return buildFallbackOutput(input);
-  }
-
-  if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`[TokenSense] Gemini API error: ${response.status} ${JSON.stringify(errorData)}`);
-      return buildFallbackOutput(input);
-  }
-
-  const data = await response.json();
-  let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  
-  if (!text || typeof text !== 'string' || text.trim().length === 0) {
-    console.error('[TokenSense] Empty or unexpected Gemini response:', JSON.stringify(data).slice(0, 400));
-    return buildFallbackOutput(input);
-  }
-
-  text = text.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
-
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    console.error('[TokenSense] JSON.parse failed. Raw cleaned text:', text.slice(0, 500));
-    return buildFallbackOutput(input);
-  }
-
-  const result = {
-    executiveSummary: parsed.executiveSummary,
-    recommendations: parsed.recommendations.map((aiRec: any) => {
-      const matchedInsight = input.insights[aiRec._insightIndex] 
-        ?? input.insights.find(ins => ins.team === aiRec.team && ins.rule === aiRec.rule)
-        ?? input.insights[0];
-      return {
-        recommendation: {
-          team: aiRec.team,
-          rule: matchedInsight?.rule,
-          issue: aiRec.issue,
-          action: aiRec.action,
-          monthlySaving: aiRec.monthlySaving,
-          effort: aiRec.effort,
-          confidence: aiRec.confidence,
-          evidence: matchedInsight?.evidence || 'Flagged by monitoring system',
-          category: aiRec.category
-        },
-        explanation: aiRec.explanation,
-        whyItHappened: aiRec.whyItHappened
-      };
-    })
-  };
-
-  saveToCache(cacheKey, JSON.stringify(result));
-  return result;
-}
-

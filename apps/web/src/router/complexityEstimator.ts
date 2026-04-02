@@ -1,4 +1,4 @@
-import type { Complexity } from './types';
+import type { Complexity } from '@tokensense/types';
 
 const COMPLEX_KEYWORDS = /\b(architecture|distributed|concurrent|optimize|algorithm|design pattern|system design|migration|security audit|performance)\b/i;
 const MODERATE_KEYWORDS = /\b(implement|integrate|configure|setup|deploy|test|refactor|debug|workflow)\b/i;

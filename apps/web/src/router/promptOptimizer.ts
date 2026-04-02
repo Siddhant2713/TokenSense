@@ -1,4 +1,4 @@
-import type { TaskType } from './types';
+import type { TaskType } from '@tokensense/types';
 
 export function optimizePrompt(prompt: string, taskType: TaskType): string {
   let optimized = prompt;

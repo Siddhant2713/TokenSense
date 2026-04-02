@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CloudResourceMetrics } from '../types';
+import type { CloudResourceMetrics } from '@tokensense/types';
 import { DashboardCard } from './DashboardCard';
 
 export function CloudMetricsTable({ metrics }: { metrics: CloudResourceMetrics[] }) {

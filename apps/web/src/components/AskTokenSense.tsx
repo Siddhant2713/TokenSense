@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
-import type { TeamMetrics, Insight } from "../types";
+import type { TeamMetrics, Insight } from '@tokensense/types';
 import './AskTokenSense.css';
 
 const SUGGESTIONS = [

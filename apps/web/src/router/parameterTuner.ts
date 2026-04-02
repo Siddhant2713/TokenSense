@@ -1,4 +1,4 @@
-import type { TaskType, Complexity } from './types';
+import type { TaskType, Complexity } from '@tokensense/types';
 
 export interface TunedParameters {
   temperature: number;

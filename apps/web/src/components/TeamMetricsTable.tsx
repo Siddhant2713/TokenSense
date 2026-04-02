@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
-import type { TeamMetrics } from '../types';
+import type { TeamMetrics } from '@tokensense/types';
 import { DashboardCard } from './DashboardCard';
 
 export function TeamMetricsTable({ metrics }: { metrics: TeamMetrics[] }) {

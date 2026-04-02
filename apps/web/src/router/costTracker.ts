@@ -1,4 +1,4 @@
-import type { RequestLog, AggregatedMetrics } from './types';
+import type { RequestLog, AggregatedMetrics } from '@tokensense/types';
 
 export class CostTracker {
   private logs: RequestLog[] = [];
