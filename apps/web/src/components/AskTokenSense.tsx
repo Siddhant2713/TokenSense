@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
 import type { TeamMetrics, Insight } from '@tokensense/types';
+import { getApiConfig, saveApiConfig, clearApiConfig } from '../utils/apiKeyManager';
 import './AskTokenSense.css';
 
 const SUGGESTIONS = [
@@ -61,16 +62,36 @@ Rules:
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [streamedText, setStreamedText] = useState("");
+  const [configMode, setConfigMode] = useState(false);
+  const [cfgKey, setCfgKey] = useState("");
+  const [cfgBaseUrl, setCfgBaseUrl] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
-  }, [open]);
+    if (open) {
+      const cfg = getApiConfig();
+      if (!cfg?.apiKey) setConfigMode(true);
+      else if (inputRef.current && !configMode) inputRef.current.focus();
+    }
+  }, [open, configMode]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamedText]);
+
+  function handleSaveConfig() {
+    if (!cfgKey.trim()) return;
+    saveApiConfig({ apiKey: cfgKey.trim(), baseUrl: cfgBaseUrl.trim() });
+    setConfigMode(false);
+  }
+
+  function handleClearConfig() {
+    clearApiConfig();
+    setCfgKey("");
+    setCfgBaseUrl("");
+    setConfigMode(true);
+  }
 
   async function send(text?: string) {
     const query = text || input.trim();
@@ -84,43 +105,38 @@ Rules:
     setStreamedText("");
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error("VITE_GEMINI_API_KEY is not set in your .env file.");
-
-      // BUG-CHAT-01 FIX: use v1beta for gemini-2.0-flash
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents: next.map((m) => ({
-              role: m.role === "assistant" ? "model" : "user",
-              parts: [{ text: m.content }],
-            })),
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1024,
-            },
-          }),
-        }
-      );
-
-      // BUG-CHAT-02 FIX: check res.ok and surface errors
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const errMsg = (errorData as any)?.error?.message ?? `HTTP ${res.status}`;
-        console.error("[TokenSense Chat] API error:", res.status, errorData);
-        throw new Error(`Gemini API error: ${errMsg}`);
+      const config = getApiConfig();
+      if (!config?.apiKey) {
+        throw new Error("No API Key configured. Please open settings.");
       }
 
-      const data = await res.json();
-      const reply =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ??
-        data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") ??
-        "The model returned an empty response. Try rephrasing your question.";
+      const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+      const OPENAI_API_URL = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
+      const serverRes = await fetch(OPENAI_API_URL, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: 'system', content: systemPrompt }, ...next],
+          temperature: 0.7,
+          max_tokens: 1024
+        })
+      });
+
+      if (!serverRes.ok) {
+        const errJson = await serverRes.json().catch(() => ({}));
+        throw new Error(`API returned ${serverRes.status} ${JSON.stringify(errJson)}`);
+      }
+
+      const data = await serverRes.json();
+      const reply = data.choices?.[0]?.message?.content;
+      
+      if (!reply) throw new Error("Empty reply from server");
+      
       // Simulate streaming
       let i = 0;
       const interval = setInterval(() => {
@@ -133,14 +149,15 @@ Rules:
           setLoading(false);
         }
       }, 8);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error occurred.";
-      console.error("[TokenSense Chat] Error:", err);
+      
+    } catch (serverErr: any) {
+      console.error("[TokenSense Chat] API Error:", serverErr);
+      const message = serverErr instanceof Error ? serverErr.message : "Unknown error occurred.";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `⚠ ${message}\n\nCheck your browser console for details and verify your VITE_GEMINI_API_KEY is set correctly.`,
+          content: `⚠ Unable to reach provider.\n\nError: ${message}\nPlease verify your settings and Base URL.`,
         },
       ]);
       setLoading(false);
@@ -176,31 +193,75 @@ Rules:
                 <span className="ts-brand-label">TokenSense AI</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {hasConversation && (
+                {!configMode && (
+                  <button className="ts-clear" onClick={() => {
+                    const cfg = getApiConfig();
+                    setCfgKey(cfg?.apiKey || "");
+                    setCfgBaseUrl(cfg?.baseUrl || "");
+                    setConfigMode(true);
+                  }}>⚙️</button>
+                )}
+                {hasConversation && !configMode && (
                   <button className="ts-clear" onClick={() => setMessages([])}>clear</button>
                 )}
                 <button className="ts-close" onClick={() => setOpen(false)}>✕</button>
               </div>
             </div>
 
-            <div className="ts-context-bar">
-              <div className="ts-ctx-item">
-                <span className="ts-ctx-val">${totals?.totalLLMCost?.toFixed(2) ?? '0.00'}</span>
-                <span className="ts-ctx-lbl">LLM spend</span>
+            {configMode ? (
+              <div className="ts-body" style={{ padding: "20px" }}>
+                <h3 style={{ margin: "0 0 16px 0", color: "#f8fafc" }}>Configure TokenSense AI</h3>
+                <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#94a3b8" }}>
+                  TokenSense operates directly from your browser to ensure absolute security. Provide your API Key and an optional Base URL to connect to any Universal gateway. Your key never leaves your browser.
+                </p>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#f8fafc" }}>API Key (Required)</label>
+                  <input 
+                    type="password" 
+                    value={cfgKey} 
+                    onChange={e => setCfgKey(e.target.value)} 
+                    placeholder="sk-..."
+                    style={{ width: "100%", padding: 8, background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#f8fafc" }}>Base URL (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={cfgBaseUrl} 
+                    onChange={e => setCfgBaseUrl(e.target.value)} 
+                    placeholder="https://api.openai.com/v1"
+                    style={{ width: "100%", padding: 8, background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: 4 }}
+                  />
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Leave blank to default to generic OpenAI.</div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={handleSaveConfig} disabled={!cfgKey.trim()} style={{ background: "#3b82f6", color: "white", padding: "6px 12px", border: "none", borderRadius: 4, cursor: "pointer", opacity: cfgKey.trim() ? 1 : 0.5 }}>Save & Start</button>
+                  {getApiConfig()?.apiKey && <button onClick={() => setConfigMode(false)} style={{ background: "transparent", color: "#94a3b8", padding: "6px 12px", border: "1px solid #334155", borderRadius: 4, cursor: "pointer" }}>Cancel</button>}
+                  <div style={{ flex: 1 }} />
+                  {getApiConfig()?.apiKey && <button onClick={handleClearConfig} style={{ background: "transparent", color: "#ef4444", padding: "6px 12px", border: "1px solid #ef4444", borderRadius: 4, cursor: "pointer" }}>Clear Config</button>}
+                </div>
               </div>
-              <div className="ts-ctx-item">
-                <span className="ts-ctx-val">${totals?.totalCloudCost?.toFixed(2) ?? '0.00'}</span>
-                <span className="ts-ctx-lbl">Cloud spend</span>
-              </div>
-              <div className="ts-ctx-item">
-                <span className="ts-ctx-val" style={{ color: "#ef4444" }}>{totals?.totalInsights ?? 0}</span>
-                <span className="ts-ctx-lbl">Issues</span>
-              </div>
-              <div className="ts-ctx-item">
-                <span className="ts-ctx-val" style={{ color: "#10b981" }}>Live</span>
-                <span className="ts-ctx-lbl">Analysis</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="ts-context-bar">
+                  <div className="ts-ctx-item">
+                    <span className="ts-ctx-val">${totals?.totalLLMCost?.toFixed(2) ?? '0.00'}</span>
+                    <span className="ts-ctx-lbl">LLM spend</span>
+                  </div>
+                  <div className="ts-ctx-item">
+                    <span className="ts-ctx-val">${totals?.totalCloudCost?.toFixed(2) ?? '0.00'}</span>
+                    <span className="ts-ctx-lbl">Cloud spend</span>
+                  </div>
+                  <div className="ts-ctx-item">
+                    <span className="ts-ctx-val" style={{ color: "#ef4444" }}>{totals?.totalInsights ?? 0}</span>
+                    <span className="ts-ctx-lbl">Issues</span>
+                  </div>
+                  <div className="ts-ctx-item">
+                    <span className="ts-ctx-val" style={{ color: "#10b981" }}>Live</span>
+                    <span className="ts-ctx-lbl">Analysis</span>
+                  </div>
+                </div>
 
             <div className="ts-body">
               {!hasConversation && (
@@ -237,22 +298,24 @@ Rules:
               <div ref={bottomRef} />
             </div>
 
-            <div className="ts-footer">
-              <textarea
-                ref={inputRef}
-                className="ts-textarea"
-                placeholder="Ask about your costs, models, or teams..."
-                value={input}
-                rows={1}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKey}
-              />
-              <button className="ts-send" onClick={() => send()} disabled={!input.trim() || loading}>
-                <svg viewBox="0 0 24 24">
-                  <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
-              </button>
-            </div>
+              <div className="ts-footer">
+                <textarea
+                  ref={inputRef}
+                  className="ts-textarea"
+                  placeholder="Ask about your costs, models, or teams..."
+                  value={input}
+                  rows={1}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKey}
+                />
+                <button className="ts-send" onClick={() => send()} disabled={!input.trim() || loading}>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
           </div>
         )}
       </div>
