@@ -1,186 +1,162 @@
-import type { LLMEnhancerInput, EnhancedOutput, Insight } from '@tokensense/types';
+import type { LLMEnhancerInput, EnhancedOutput } from '@tokensense/types';
 
-
-/* Caching removed for backend */
-function getCacheKey(insights: Insight[]) {
-  return 'ts_ai_' + insights.map(i => i.rule + i.team).join('_');
-}
-
-function getFromCache(key: string): string | null {
-  try {
-    return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveToCache(key: string, value: string): void {
-  try {
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(key, value);
-  } catch {
-    // Ignore in non-browser environments
-  }
-}
+// ─── BYOK Server-Key Tier ─────────────────────────────────────────────────────
+// This endpoint is the OPTIONAL server-key tier for self-hosted deployments.
+// In pure BYOK mode (no OPENAI_API_KEY on server) it returns deterministic output.
+// When a server operator sets OPENAI_API_KEY, this processes AI calls server-side,
+// so users do not need to supply their own keys.
+// ──────────────────────────────────────────────────────────────────────────────
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-function getApiKey(): string | undefined {
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.OPENAI_API_KEY) {
-    return (import.meta as any).env.OPENAI_API_KEY;
-  }
-  if (typeof process !== 'undefined' && process.env && process.env.OPENAI_API_KEY) {
-    return process.env.OPENAI_API_KEY;
-  }
-  return undefined;
-}
-
 function buildFallbackOutput(input: LLMEnhancerInput): EnhancedOutput {
-  const llmCount = input.insights.filter(i => i.category === 'llm' || !i.category).length || input.insights.length;
+  const llmCount =
+    input.insights.filter(i => i.category === 'llm' || !i.category).length ||
+    input.insights.length;
   const cloudCount = input.insights.length - llmCount;
-  
-  const recommendations = input.insights.map((insight) => {
+
+  const recommendations = input.insights.map(insight => {
     let saving = 500;
-    const rule = (insight.rule || '').toUpperCase();
+    const rule = (insight.rule ?? '').toUpperCase();
     if (rule.includes('MODEL_MISUSE') || rule.includes('DOWNGRADE')) saving = 9200;
-    else if (rule.includes('LONG_PROMPTS') || rule.includes('CONTEXT_WINDOW')) saving = 4100;
+    else if (rule.includes('LONG_PROMPTS')) saving = 4100;
     else if (rule.includes('CACHE_WASTE')) saving = 1800;
     else if (rule.includes('OVER_PROVISIONED')) saving = 2500;
-    
+
     return {
       recommendation: {
-        team: insight.team || "Unknown Team",
+        team: insight.team ?? 'Unknown Team',
         rule: insight.rule,
-        issue: insight.rule || "Efficiency Warning",
-        action: insight.suggestedFix || "Investigate the alert and optimize.",
+        issue: insight.rule ?? 'Efficiency Warning',
+        action: insight.suggestedFix ?? 'Investigate and optimize.',
         monthlySaving: saving,
-        effort: "Medium" as "Medium" | "High" | "Low",
-        confidence: "High" as "Medium" | "High" | "Low",
-        evidence: insight.evidence || "Flagged by Rules Engine",
-        category: insight.category || "llm"
+        effort: 'Medium' as const,
+        confidence: 'High' as const,
+        evidence: insight.evidence ?? 'Flagged by Rules Engine',
+        category: insight.category ?? 'llm',
       },
-      explanation: insight.evidence || "Deterministically flagged anomaly in metric volumes.",
-      whyItHappened: insight.suggestedFix || "Consider reviewing your resource pipelines."
+      explanation: insight.evidence ?? 'Deterministically flagged anomaly.',
+      whyItHappened: insight.suggestedFix ?? 'Review resource pipelines.',
     };
   });
 
-  const totalSavings = recommendations.reduce((sum, r) => sum + r.recommendation.monthlySaving, 0);
+  const totalSavings = recommendations.reduce(
+    (sum, r) => sum + r.recommendation.monthlySaving,
+    0
+  );
 
   return {
-    executiveSummary: `TokenSense detected ${input.insights.length} optimisation opportunities across ${llmCount} LLM and ${cloudCount} cloud issues. Estimated combined savings: $${totalSavings.toLocaleString()}/month.`,
-    recommendations
+    executiveSummary: `TokenSense detected ${input.insights.length} optimisation opportunities across ${llmCount} LLM and ${cloudCount} cloud issues. Estimated savings: $${totalSavings.toLocaleString()}/month.`,
+    recommendations,
   };
 }
 
-export async function generateAIRecommendations(input: LLMEnhancerInput): Promise<EnhancedOutput> {
-  const cacheKey = getCacheKey(input.insights);
-  /* Bypass explicit cache on server side */
-
-  const apiKey = getApiKey();
+export async function generateAIRecommendations(
+  input: LLMEnhancerInput
+): Promise<EnhancedOutput> {
+  const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    console.warn('[TokenSense] OPENAI_API_KEY is missing. Falling back to deterministic output.');
+    console.info(
+      '[TokenSense Server] No OPENAI_API_KEY configured — deterministic mode. ' +
+        'Set it in apps/server/.env to enable server-side AI (optional in BYOK deployments).'
+    );
     return buildFallbackOutput(input);
   }
 
   const prompt = `
-    You are TokenSense AI, an LLM Gateway router and cloud cost-optimization expert.
-    Analyze the following monitoring alerts (insights) and their associated team metrics context.
-    
-    Insights: ${JSON.stringify(input.insights.map((ins, i) => ({ ...ins, _index: i })), null, 2)}
-    Metrics: ${JSON.stringify(input.metrics, null, 2)}
-    Cloud Resource Context: ${JSON.stringify(input.cloudMetrics, null, 2)}
+You are TokenSense AI, an LLM cost-optimization expert.
+Analyze the monitoring alerts and team metrics below.
 
-    RESPONSE FORMAT:
-    Output ONLY valid JSON. Do not wrap in markdown code blocks. Do not add any explanation before or after the JSON.
+Insights: ${JSON.stringify(input.insights.map((ins, i) => ({ ...ins, _index: i })), null, 2)}
+Metrics: ${JSON.stringify(input.metrics, null, 2)}
+Cloud Resources: ${JSON.stringify(input.cloudMetrics, null, 2)}
+
+Output ONLY valid JSON. No markdown fences.
+{
+  "executiveSummary": "...",
+  "recommendations": [
     {
-      "executiveSummary": "...",
-      "recommendations": [
-        {
-          "_insightIndex": 0,
-          "rule": "match rule from insight",
-          "team": "match team from insight",
-          "issue": "short title of issue",
-          "action": "specific instruction to fix",
-          "monthlySaving": 123.45,
-          "effort": "Low|Medium|High",
-          "confidence": "Low|Medium|High",
-          "category": "llm|cloud",
-          "explanation": "detailed explanation referencing data",
-          "whyItHappened": "root cause analysis"
-        }
-      ]
+      "_insightIndex": 0,
+      "rule": "...",
+      "team": "...",
+      "issue": "...",
+      "action": "...",
+      "monthlySaving": 123.45,
+      "effort": "Low|Medium|High",
+      "confidence": "Low|Medium|High",
+      "category": "llm|cloud",
+      "explanation": "...",
+      "whyItHappened": "..."
     }
-  `;
+  ]
+}`.trim();
 
-  let response;
+  let response: Response;
   try {
     response = await fetch(OPENAI_API_URL, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
+        response_format: { type: 'json_object' },
+      }),
     });
-  } catch (netErr: any) {
-    console.error('[TokenSense] Network error fetching OpenAI:', netErr);
+  } catch (netErr) {
+    console.error('[TokenSense Server] Network error calling OpenAI:', netErr);
     return buildFallbackOutput(input);
   }
 
   if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(`[TokenSense] OpenAI API error: ${response.status} ${JSON.stringify(errorData)}`);
-      return buildFallbackOutput(input);
+    const body = await response.json().catch(() => ({}));
+    console.error(`[TokenSense Server] OpenAI error ${response.status}:`, body);
+    return buildFallbackOutput(input);
   }
 
   const data = await response.json();
-  let text = data.choices?.[0]?.message?.content;
-  
-  if (!text || typeof text !== 'string' || text.trim().length === 0) {
-    console.error('[TokenSense] Empty or unexpected OpenAI response:', JSON.stringify(data).slice(0, 400));
+  const text: string = data.choices?.[0]?.message?.content ?? '';
+
+  if (!text) {
+    console.error('[TokenSense Server] Empty response from OpenAI.');
     return buildFallbackOutput(input);
   }
 
-  text = text.replace(/^```(json)?\n/, '').replace(/\n```$/, '');
-
-  let parsed;
+  let parsed: any;
   try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    console.error('[TokenSense] JSON.parse failed. Raw cleaned text:', text.slice(0, 500));
+    parsed = JSON.parse(text.replace(/^```(json)?\n?/, '').replace(/\n?```$/, ''));
+  } catch {
+    console.error('[TokenSense Server] Failed to parse AI JSON response.');
     return buildFallbackOutput(input);
   }
 
-  const result = {
+  return {
     executiveSummary: parsed.executiveSummary,
-    recommendations: parsed.recommendations.map((aiRec: any) => {
-      const matchedInsight = input.insights[aiRec._insightIndex] 
-        ?? input.insights.find(ins => ins.team === aiRec.team && ins.rule === aiRec.rule)
-        ?? input.insights[0];
+    recommendations: (parsed.recommendations ?? []).map((aiRec: any) => {
+      const matched =
+        input.insights[aiRec._insightIndex] ??
+        input.insights.find(i => i.team === aiRec.team && i.rule === aiRec.rule) ??
+        input.insights[0];
+
       return {
         recommendation: {
           team: aiRec.team,
-          rule: matchedInsight?.rule,
+          rule: matched?.rule,
           issue: aiRec.issue,
           action: aiRec.action,
           monthlySaving: aiRec.monthlySaving,
           effort: aiRec.effort,
           confidence: aiRec.confidence,
-          evidence: matchedInsight?.evidence || 'Flagged by monitoring system',
-          category: aiRec.category
+          evidence: matched?.evidence ?? 'Flagged by monitoring system',
+          category: aiRec.category,
         },
         explanation: aiRec.explanation,
-        whyItHappened: aiRec.whyItHappened
+        whyItHappened: aiRec.whyItHappened,
       };
-    })
+    }),
   };
-
-  
-  return result;
 }
-

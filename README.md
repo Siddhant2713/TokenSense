@@ -260,7 +260,7 @@ pnpm lint
 |---|---|---|
 | `VITE_API_URL` | Yes | URL of the Express API server. Default: `http://localhost:3001` |
 
-> ⚠️ **Security note:** The old `VITE_GEMINI_API_KEY` has been removed. The Gemini key now lives server-side only. Never use `VITE_` prefixed secrets.
+> ⚠️ **Security note:** AI keys are stored locally in the browser using the BYOK config modal. `VITE_` prefixed secrets are never used for API keys.
 
 ### `apps/server/.env`
 
@@ -426,7 +426,7 @@ The floating chat interface in the bottom-right corner gives you a context-aware
 - *"What's my projected yearly spend if nothing changes?"*
 - *"Explain the Payments MODEL_MISUSE issue for my CTO"*
 
-The chat widget uses the **server-side** Gemini endpoint (`POST /api/analyze`) when the server is running, and falls back to the browser-side Gemini call if not — so it always works in demo mode.
+The chat widget uses the **Bring Your Own Key (BYOK)** architecture. You configure your own OpenAI or compatible API key directly in the UI, and the browser makes direct calls to the provider. Keys never touch the server.
 
 ---
 

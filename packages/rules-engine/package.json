@@ -10,5 +10,6 @@
   },
   "dependencies": {
     "@tokensense/types": "workspace:*"
-  }
+  },
+  "//": "Note: We intentionally omit the 'build' script here. These packages are consumed via source in this monorepo."
 }

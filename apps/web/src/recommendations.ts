@@ -95,6 +95,14 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
       const matchedInsight = input.insights[aiRec._insightIndex] 
         ?? input.insights.find(ins => ins.team === aiRec.team && ins.rule === aiRec.rule)
         ?? input.insights[0];
+
+      // Resolve deterministically: AI response -> matched insight -> rule-based default
+      const category: 'llm' | 'cloud' = 
+        aiRec.category === 'llm' || aiRec.category === 'cloud'
+          ? aiRec.category
+          : matchedInsight?.category ??
+            (['RAM_OVER_PROVISION'].includes(matchedInsight?.rule ?? '') ? 'cloud' : 'llm');
+
       return {
         recommendation: {
           team: aiRec.team,
@@ -105,7 +113,7 @@ export async function generateAIRecommendations(input: LLMEnhancerInput): Promis
           effort: aiRec.effort,
           confidence: aiRec.confidence,
           evidence: matchedInsight?.evidence || 'Flagged by monitoring system',
-          category: Math.random() > 0.5 ? 'llm' : 'cloud'
+          category,
         },
         explanation: aiRec.explanation,
         whyItHappened: aiRec.whyItHappened

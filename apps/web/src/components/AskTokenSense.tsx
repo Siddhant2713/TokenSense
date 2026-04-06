@@ -209,37 +209,113 @@ Rules:
             </div>
 
             {configMode ? (
-              <div className="ts-body" style={{ padding: "20px" }}>
-                <h3 style={{ margin: "0 0 16px 0", color: "#f8fafc" }}>Configure TokenSense AI</h3>
-                <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#94a3b8" }}>
-                  TokenSense operates directly from your browser to ensure absolute security. Provide your API Key and an optional Base URL to connect to any Universal gateway. Your key never leaves your browser.
+              <div className="ts-body" style={{ padding: '20px', gap: '0' }}>
+                <h3 style={{
+                  margin: '0 0 10px 0', fontSize: 15, fontWeight: 700,
+                  color: 'var(--text-primary, #0f172a)',
+                }}>
+                  Configure TokenSense AI
+                </h3>
+                <p style={{
+                  margin: '0 0 18px 0', fontSize: 13, lineHeight: 1.6,
+                  color: 'var(--text-secondary, #64748b)',
+                }}>
+                  Your key stays in your browser (<code>localStorage</code>) and is never
+                  sent to the TokenSense server. Compatible with OpenAI, Azure, Ollama,
+                  and any OpenAI-compatible endpoint.
                 </p>
+
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#f8fafc" }}>API Key (Required)</label>
-                  <input 
-                    type="password" 
-                    value={cfgKey} 
-                    onChange={e => setCfgKey(e.target.value)} 
+                  <label style={{
+                    display: 'block', fontSize: 12, marginBottom: 4,
+                    fontWeight: 600, color: 'var(--text-primary, #0f172a)',
+                  }}>
+                    API Key{' '}
+                    <span style={{ color: 'var(--red, #ef4444)' }}>*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={cfgKey}
+                    onChange={e => setCfgKey(e.target.value)}
                     placeholder="sk-..."
-                    style={{ width: "100%", padding: 8, background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: 4 }}
+                    style={{
+                      width: '100%', padding: '8px 10px', fontSize: 13,
+                      background: 'var(--bg-base, #f1f5f9)',
+                      border: '1px solid var(--border-base, #e2e8f0)',
+                      borderRadius: 6, color: 'var(--text-primary, #0f172a)', outline: 'none',
+                    }}
                   />
                 </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#f8fafc" }}>Base URL (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={cfgBaseUrl} 
-                    onChange={e => setCfgBaseUrl(e.target.value)} 
+
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{
+                    display: 'block', fontSize: 12, marginBottom: 4,
+                    fontWeight: 600, color: 'var(--text-primary, #0f172a)',
+                  }}>
+                    Base URL{' '}
+                    <span style={{ color: 'var(--text-muted, #94a3b8)', fontWeight: 400 }}>
+                      (optional)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={cfgBaseUrl}
+                    onChange={e => setCfgBaseUrl(e.target.value)}
                     placeholder="https://api.openai.com/v1"
-                    style={{ width: "100%", padding: 8, background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: 4 }}
+                    style={{
+                      width: '100%', padding: '8px 10px', fontSize: 13,
+                      background: 'var(--bg-base, #f1f5f9)',
+                      border: '1px solid var(--border-base, #e2e8f0)',
+                      borderRadius: 6, color: 'var(--text-primary, #0f172a)', outline: 'none',
+                    }}
                   />
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Leave blank to default to generic OpenAI.</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', marginTop: 4 }}>
+                    Leave blank for OpenAI. Works with Azure OpenAI, Ollama, or any
+                    compatible gateway.
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={handleSaveConfig} disabled={!cfgKey.trim()} style={{ background: "#3b82f6", color: "white", padding: "6px 12px", border: "none", borderRadius: 4, cursor: "pointer", opacity: cfgKey.trim() ? 1 : 0.5 }}>Save & Start</button>
-                  {getApiConfig()?.apiKey && <button onClick={() => setConfigMode(false)} style={{ background: "transparent", color: "#94a3b8", padding: "6px 12px", border: "1px solid #334155", borderRadius: 4, cursor: "pointer" }}>Cancel</button>}
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={handleSaveConfig}
+                    disabled={!cfgKey.trim()}
+                    style={{
+                      background: cfgKey.trim() ? '#3b82f6' : 'var(--border-base, #e2e8f0)',
+                      color: cfgKey.trim() ? 'white' : 'var(--text-muted, #94a3b8)',
+                      padding: '7px 14px', border: 'none', borderRadius: 6, fontSize: 13,
+                      fontWeight: 600, cursor: cfgKey.trim() ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    Save &amp; Start
+                  </button>
+                  {getApiConfig()?.apiKey && (
+                    <button
+                      onClick={() => setConfigMode(false)}
+                      style={{
+                        background: 'transparent',
+                        color: 'var(--text-secondary, #64748b)',
+                        padding: '7px 14px', fontSize: 13,
+                        border: '1px solid var(--border-base, #e2e8f0)',
+                        borderRadius: 6, cursor: 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  )}
                   <div style={{ flex: 1 }} />
-                  {getApiConfig()?.apiKey && <button onClick={handleClearConfig} style={{ background: "transparent", color: "#ef4444", padding: "6px 12px", border: "1px solid #ef4444", borderRadius: 4, cursor: "pointer" }}>Clear Config</button>}
+                  {getApiConfig()?.apiKey && (
+                    <button
+                      onClick={handleClearConfig}
+                      style={{
+                        background: 'transparent', color: 'var(--red, #ef4444)',
+                        padding: '7px 14px', fontSize: 13,
+                        border: '1px solid var(--red, #ef4444)',
+                        borderRadius: 6, cursor: 'pointer',
+                      }}
+                    >
+                      Clear Key
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
